@@ -1,4 +1,5 @@
 import { Command, CommanderError } from 'commander';
+import { registerAuthCommands, type AuthServices } from './auth.js';
 import { assertCommandEnabled, CliError } from '../app/command-guard.js';
 import { ExitCode } from '../app/exit-codes.js';
 import { CommandEnvelope, formatJsonEnvelope, formatPlainText } from '../app/output.js';
@@ -26,6 +27,10 @@ type CaptureState = {
   stderr: string;
 };
 
+export type RunCliDependencies = {
+  authServices?: AuthServices;
+};
+
 function parseEnabledCommands(value: string): string[] {
   return value
     .split(',')
@@ -33,7 +38,10 @@ function parseEnabledCommands(value: string): string[] {
     .filter(Boolean);
 }
 
-function createProgram(capture: CaptureState): { program: Command; getEnvelope: () => CommandEnvelope | null } {
+function createProgram(
+  capture: CaptureState,
+  dependencies: RunCliDependencies = {}
+): { program: Command; getEnvelope: () => CommandEnvelope | null } {
   let envelope: CommandEnvelope | null = null;
 
   const program = new Command();
@@ -79,10 +87,13 @@ function createProgram(capture: CaptureState): { program: Command; getEnvelope: 
   };
 
   const auth = program.command('auth').description('Manage SAC browser-backed auth profiles');
-  registerPlaceholder('auth', auth.command('login').description('Login with a headed browser session'), 'auth login');
-  registerPlaceholder('auth', auth.command('status').description('Check auth/session status'), 'auth status');
-  registerPlaceholder('auth', auth.command('logout').description('Remove local browser-backed session state'), 'auth logout');
-  registerPlaceholder('auth', auth.command('profiles').description('List configured profiles'), 'auth profiles');
+  registerAuthCommands(auth, {
+    getOptions,
+    setEnvelope: (nextEnvelope) => {
+      envelope = nextEnvelope;
+    },
+    authServices: dependencies.authServices
+  });
 
   const dataAction = program.command('data-action').description('Read data action metadata');
   registerPlaceholder('data-action', dataAction.command('get').description('Get a data action target'), 'data-action get');
@@ -150,9 +161,9 @@ function toErrorEnvelope(error: unknown): CommandEnvelope {
   };
 }
 
-export async function runCli(args: string[]): Promise<CliResult> {
+export async function runCli(args: string[], dependencies: RunCliDependencies = {}): Promise<CliResult> {
   const capture: CaptureState = { stdout: '', stderr: '' };
-  const { program, getEnvelope } = createProgram(capture);
+  const { program, getEnvelope } = createProgram(capture, dependencies);
 
   try {
     await program.parseAsync(args, { from: 'user' });
