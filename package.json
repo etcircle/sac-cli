@@ -1,0 +1,27 @@
+{
+  "name": "sac-cli",
+  "version": "0.1.0",
+  "private": false,
+  "description": "CLI-first SAC authoring/runtime proof tool with browser-backed auth and evidence-driven verification.",
+  "type": "module",
+  "bin": {
+    "sac-cli": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:contract": "vitest run tests/contract --passWithNoTests",
+    "test:live": "vitest run tests/live --passWithNoTests",
+    "cli": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "commander": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
