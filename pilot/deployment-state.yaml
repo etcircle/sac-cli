@@ -1,0 +1,18 @@
+tenantBaseUrl: https://decisioninc-1.eu10.hcs.cloud.sap
+
+dataAction:
+  key: fx-translation
+  objectType: PLANNINGSEQUENCE
+  package: t.J
+  objectName: FA9020524E79E7C812C4D1E8D41355B
+  stepIds:
+    fx-trans: 39357048-8119-4677-3365-911086985863
+
+story:
+  key: forecast-story
+  resourceId: 6441DE864495C73F5BCA84DEF179F641
+
+widgets:
+  forecast-table:
+    story: forecast-story
+    page: main

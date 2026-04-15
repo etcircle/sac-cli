@@ -1,0 +1,21 @@
+// Captured from the live SAC editor body preview on 2026-04-15.
+// This is intentionally marked as a ui-preview-excerpt until the pull/read-back lane is proven.
+CONFIG.GENERATE_UNBOOKED_DATA = OFF
+MEMBERSET [d/Measures] = "AMOUNT_YTD"
+MEMBERSET [d/C_CURRENCY] = "LC"
+MEMBERSET [d/C_COMP_CODE] = BASEMEMBER([d/C_COMP_CODE], %C_COMP_CODE%)
+MEMBERSET [d/Date] = BASEMEMBER([d/Date].[h/FYP], %Date%)
+MEMBERSET [d/C_AUDITTRAIL] = BASEMEMBER([d/C_AUDITTRAIL].[h/PARENTH1], "AU_CONSOL_TOT")
+MEMBERSET [d/C_ACC] = BASEMEMBER([d/C_ACC].[h/parentId], %C_ACC%)
+VARIABLEMEMBER #FL_MVT_AVG OF [d/C_FLOW]
+VARIABLEMEMBER #FL_MVT_OPE OF [d/C_FLOW]
+VARIABLEMEMBER #FL_MVT_ACQ OF [d/C_FLOW]
+VARIABLEMEMBER #FL_MVT_ACQ_RCUR OF [d/C_FLOW]
+
+// ----- Start: delete target intersections -----
+IF [d/C_ACC].[p/C_RATETYPE] = ("HISFLOW", "RESFLOW", "CTAFLOW")
+   AND [d/C_FLOW].[p/DIMLIST_FX] = "CONV_OPE" THEN
+    // Keep opening balances sourced from COPYOPE.
+ELSE
+    DELETE([d/C_CURRENCY] = %TargetCurrency%)
+ENDIF

@@ -1,0 +1,27 @@
+tenant:
+  baseUrl: https://decisioninc-1.eu10.hcs.cloud.sap
+  tenantId: J
+
+sources:
+  handoff: sac-agent-handover-2026-04-15
+  reconFolder: sac-api-recon-2026-04-15_143009
+  storyCapture: story-edit.json
+  dataActionCapture: data-action-edit.json
+
+story:
+  key: forecast-story
+  name: POC - C_REPORTING forecast table
+  resourceId: 6441DE864495C73F5BCA84DEF179F641
+  route: '#/story2&/s2/6441DE864495C73F5BCA84DEF179F641/?type=CANVAS&mode=edit'
+  folderPath: My Files / My Playground
+
+dataAction:
+  key: fx-translation
+  displayName: C_REP_DA008
+  objectType: PLANNINGSEQUENCE
+  package: t.J
+  objectName: FA9020524E79E7C812C4D1E8D41355B
+  route: '#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863'
+  stepId: 39357048-8119-4677-3365-911086985863
+  stepName: FX_TRANS
+  defaultModelId: C9dksk0o57hlt1jra87he2vh67

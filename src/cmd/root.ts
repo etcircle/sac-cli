@@ -5,6 +5,7 @@ import { ExitCode } from '../app/exit-codes.js';
 import { CommandEnvelope, formatJsonEnvelope, formatPlainText } from '../app/output.js';
 import { createConfigPaths } from '../config/paths.js';
 import { createProfileStore } from '../config/profile-store.js';
+import { inspectPilotBundle } from '../pilot/bundle.js';
 
 export type CliResult = {
   exitCode: ExitCode;
@@ -116,6 +117,28 @@ function createProgram(
       }
     };
   });
+  doctor
+    .command('pilot')
+    .description('Validate the frozen proof inputs and pilot artifacts bundle')
+    .option('--root <path>', 'Project root containing the pilot/ bundle')
+    .action(async (commandOptions: { root?: string }) => {
+      assertCommandEnabled(getOptions().enableCommands, 'doctor');
+
+      const inspection = await inspectPilotBundle(commandOptions.root ?? process.cwd());
+      envelope = {
+        ok: true,
+        data: {
+          status: 'ok',
+          bundleRoot: inspection.bundleRoot,
+          storyKey: inspection.story.key,
+          dataActionKey: inspection.dataAction.key,
+          stepCount: inspection.dataAction.steps.length,
+          widgetCount: inspection.widgets.length,
+          acceptanceCheckCount: inspection.acceptanceChecks.length,
+          bundleFingerprint: inspection.bundleFingerprint
+        }
+      };
+    });
 
   return {
     program,

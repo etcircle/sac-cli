@@ -1,0 +1,17 @@
+key: forecast-table
+type: planning-table
+story: forecast-story
+page: main
+model:
+  id: C9dksk0o57hlt1jra87he2vh67
+  name: C_REPORTING
+rows:
+  - Reporting Account
+  - Company Code - DI Consol
+columns:
+  - Audittrail - DI Consol
+  - Date
+  - Measures
+filters:
+  - dimension: Version
+    value: Forecast

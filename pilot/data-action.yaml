@@ -1,0 +1,12 @@
+key: fx-translation
+displayName: C_REP_DA008
+description: FX Translation - DI Consol
+defaultModel:
+  id: C9dksk0o57hlt1jra87he2vh67
+  name: C_REPORTING
+steps:
+  - key: fx-trans
+    name: FX_TRANS
+    type: advanced-formula
+    sourceStatus: ui-preview-excerpt
+    file: steps/fx_trans.af

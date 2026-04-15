@@ -1,0 +1,8 @@
+key: forecast-story
+name: POC - C_REPORTING forecast table
+folderPath: My Files / My Playground
+pages:
+  - key: main
+    name: Page_1
+    widgets:
+      - forecast-table

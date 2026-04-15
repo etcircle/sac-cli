@@ -1,0 +1,11 @@
+requiredArtifacts:
+  - normalized-readback.json
+  - validation-result.json
+  - reopen-check.json
+  - screenshots/editor.png
+  - run.log
+
+acceptanceChecks:
+  - invalid_formula_regression_shape
+  - two_consecutive_read_back_hash_stability
+  - non_mutation_manifest_fingerprint_and_invocation_ledger
