@@ -2,6 +2,8 @@ import { Command, CommanderError } from 'commander';
 import { assertCommandEnabled, CliError } from '../app/command-guard.js';
 import { ExitCode } from '../app/exit-codes.js';
 import { CommandEnvelope, formatJsonEnvelope, formatPlainText } from '../app/output.js';
+import { createConfigPaths } from '../config/paths.js';
+import { createProfileStore } from '../config/profile-store.js';
 
 export type CliResult = {
   exitCode: ExitCode;
@@ -90,22 +92,16 @@ function createProgram(capture: CaptureState): { program: Command; getEnvelope: 
   registerPlaceholder('formula', formula.command('validate').description('Validate an AF artifact'), 'formula validate');
 
   const doctor = program.command('doctor').description('Run minimal diagnostics');
-  doctor.command('session').description('Check whether a profile-backed browser session is usable').action(() => {
+  doctor.command('session').description('Check whether a profile-backed browser session is usable').action(async () => {
     assertCommandEnabled(getOptions().enableCommands, 'doctor');
 
-    if (!getOptions().profile) {
-      throw new CliError(
-        'PROFILE_REQUIRED',
-        'A profile is required for doctor session. Pass --profile or configure a default profile.',
-        ExitCode.ProfileRequired
-      );
-    }
+    const profile = await createProfileStore(createConfigPaths()).resolveProfile(getOptions().profile);
 
     envelope = {
       ok: true,
       data: {
         status: 'ok',
-        profile: getOptions().profile ?? ''
+        profile: profile.name
       }
     };
   });

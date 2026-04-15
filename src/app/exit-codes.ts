@@ -3,5 +3,6 @@ export enum ExitCode {
   GeneralError = 1,
   InvalidInput = 2,
   CommandDisabled = 3,
-  ProfileRequired = 4
+  ProfileRequired = 4,
+  ProfileNotFound = 5
 }
