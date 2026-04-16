@@ -1,4 +1,4 @@
-tenantBaseUrl: https://decisioninc-1.eu10.hcs.cloud.sap
+tenantBaseUrl: https://tenant.example.invalid
 
 dataAction:
   key: fx-translation

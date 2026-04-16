@@ -12,14 +12,13 @@ What exists right now:
 - profile-backed headed auth bootstrap with persistent browser contexts
 - frozen `pilot/` bundle for proof inputs, artifact manifests, and evidence contract
 - `doctor pilot` validation with deterministic bundle fingerprints
+- `formula verify-pilot` for a two-pass AF readback proof against the frozen pilot bundle with no save/apply calls implemented in this repo
 - root scripts for `build`, `typecheck`, `test`, `test:contract`, `test:live`, and `cli`
 
 What does not exist yet:
 - real SAC auth/bootstrap smoke on the live tenant
-- page-context transport
-- seam clients
-- formula validation/read-back execution
-- evidence capture runtime
+- seam clients beyond the narrow pilot readback probe
+- mutation/apply/save flows
 
 ## Commands
 
@@ -27,7 +26,10 @@ What does not exist yet:
 npm run cli -- --help
 npm run cli -- --json doctor session
 npm run cli -- --json doctor pilot
+npm run cli -- --json --profile <name> formula verify-pilot
 ```
+
+Do not commit evidence output from real runs. `formula verify-pilot` writes local artifacts that can include your resolved tenant URL and target route details.
 
 ## Pilot bundle
 

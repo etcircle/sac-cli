@@ -6,6 +6,7 @@ export type BrowserPage = {
   goto(url: string, options?: { waitUntil?: 'domcontentloaded' | 'load' | 'networkidle' }): Promise<unknown>;
   url(): string;
   screenshot(options: { path: string; fullPage?: boolean }): Promise<unknown>;
+  evaluate?<Result, Arg = undefined>(pageFunction: (arg: Arg) => Result | Promise<Result>, arg: Arg): Promise<Result>;
 };
 
 export type BrowserContext = {

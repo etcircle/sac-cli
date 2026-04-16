@@ -32,8 +32,8 @@ describe('auth bootstrap', () => {
     const result = await runAuthLogin(
       {
         profileName: 'sandbox',
-        tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
-        defaultAccount: 'e.tanev@decisioninc.com',
+        tenantUrl: 'https://tenant.example.invalid',
+        defaultAccount: 'sandbox@example.invalid',
         browserChannel: 'chrome',
         notes: 'manual login',
         setDefault: true,
@@ -46,7 +46,7 @@ describe('auth bootstrap', () => {
         sessionFactory: async () => ({
           page: {
             goto,
-            url: () => 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
+            url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html',
             screenshot: vi.fn().mockResolvedValue(undefined)
           },
           context: {
@@ -60,7 +60,7 @@ describe('auth bootstrap', () => {
       }
     );
 
-    expect(goto).toHaveBeenCalledWith('https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html', { waitUntil: 'domcontentloaded' });
+    expect(goto).toHaveBeenCalledWith('https://tenant.example.invalid/sap/fpa/ui/app.html', { waitUntil: 'domcontentloaded' });
     expect(prompt).toHaveBeenCalledOnce();
     expect(result.profile.userDataDir).toBe(paths.browserUserDataDir('sandbox'));
     expect(result.profile.defaultEvidenceDir).toBe(paths.evidenceDir('sandbox'));
@@ -68,8 +68,8 @@ describe('auth bootstrap', () => {
     const saved = await store.resolveProfile('sandbox');
     expect(saved).toMatchObject({
       name: 'sandbox',
-      tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-      defaultAccount: 'e.tanev@decisioninc.com',
+      tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      defaultAccount: 'sandbox@example.invalid',
       browserChannel: 'chrome',
       notes: 'manual login'
     });
@@ -87,7 +87,7 @@ describe('auth bootstrap', () => {
       runAuthLogin(
         {
           profileName: 'sandbox',
-          tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
+          tenantUrl: 'https://tenant.example.invalid',
           inputEnabled: true
         },
         {
@@ -122,7 +122,7 @@ describe('auth bootstrap', () => {
       runAuthLogin(
         {
           profileName: 'sandbox',
-          tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
+          tenantUrl: 'https://tenant.example.invalid',
           browserChannel: 'safari' as never,
           inputEnabled: true
         },
@@ -142,7 +142,7 @@ describe('auth bootstrap', () => {
       runAuthLogin(
         {
           profileName: 'sandbox',
-          tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
+          tenantUrl: 'https://tenant.example.invalid',
           inputEnabled: false
         },
         {
@@ -164,8 +164,8 @@ describe('auth bootstrap', () => {
     const result = await checkAuthStatus(
       {
         name: 'sandbox',
-        tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
-        defaultAccount: 'e.tanev@decisioninc.com',
+        tenantUrl: 'https://tenant.example.invalid',
+        defaultAccount: 'sandbox@example.invalid',
         browserChannel: 'chrome',
         userDataDir: '/tmp/sandbox/browser',
         defaultEvidenceDir: '/tmp/sandbox/evidence'
@@ -174,7 +174,7 @@ describe('auth bootstrap', () => {
         sessionFactory: async () => ({
           page: {
             goto,
-            url: () => 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html#shell',
+            url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html#shell',
             screenshot: vi.fn().mockResolvedValue(undefined)
           },
           context: {
@@ -188,12 +188,12 @@ describe('auth bootstrap', () => {
       }
     );
 
-    expect(goto).toHaveBeenCalledWith('https://decisioninc-1.eu10.hcs.cloud.sap', { waitUntil: 'domcontentloaded' });
+    expect(goto).toHaveBeenCalledWith('https://tenant.example.invalid', { waitUntil: 'domcontentloaded' });
     expect(result).toEqual({
       status: 'ok',
       profile: 'sandbox',
-      tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
-      currentUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html#shell'
+      tenantUrl: 'https://tenant.example.invalid',
+      currentUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html#shell'
     });
     expect(close).toHaveBeenCalled();
   });
@@ -205,8 +205,8 @@ describe('auth bootstrap', () => {
       checkAuthStatus(
         {
           name: 'sandbox',
-          tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-          defaultAccount: 'e.tanev@decisioninc.com',
+          tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+          defaultAccount: 'sandbox@example.invalid',
           browserChannel: 'chrome',
           userDataDir: '/tmp/sandbox/browser',
           defaultEvidenceDir: '/tmp/sandbox/evidence'
@@ -242,8 +242,8 @@ describe('auth bootstrap', () => {
     const result = await logoutAuthProfile(
       {
         name: 'sandbox',
-        tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-        defaultAccount: 'e.tanev@decisioninc.com',
+        tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+        defaultAccount: 'sandbox@example.invalid',
         browserChannel: 'chrome',
         userDataDir: browserDir,
         defaultEvidenceDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'evidence')

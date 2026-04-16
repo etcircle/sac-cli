@@ -1,5 +1,6 @@
 import { Command, CommanderError } from 'commander';
 import { registerAuthCommands, type AuthServices } from './auth.js';
+import { registerFormulaCommands, type FormulaServices } from './formula.js';
 import { assertCommandEnabled, CliError } from '../app/command-guard.js';
 import { ExitCode } from '../app/exit-codes.js';
 import { CommandEnvelope, formatJsonEnvelope, formatPlainText } from '../app/output.js';
@@ -30,6 +31,7 @@ type CaptureState = {
 
 export type RunCliDependencies = {
   authServices?: AuthServices;
+  formulaServices?: FormulaServices;
 };
 
 function parseEnabledCommands(value: string): string[] {
@@ -101,7 +103,13 @@ function createProgram(
   registerPlaceholder('data-action', dataAction.command('steps').description('List data action steps'), 'data-action steps');
 
   const formula = program.command('formula').description('Validate and verify Advanced Formula artifacts');
-  registerPlaceholder('formula', formula.command('validate').description('Validate an AF artifact'), 'formula validate');
+  registerFormulaCommands(formula, {
+    getOptions,
+    setEnvelope: (nextEnvelope) => {
+      envelope = nextEnvelope;
+    },
+    formulaServices: dependencies.formulaServices
+  });
 
   const doctor = program.command('doctor').description('Run minimal diagnostics');
   doctor.command('session').description('Check whether a profile-backed browser session is usable').action(async () => {

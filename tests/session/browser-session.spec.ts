@@ -13,9 +13,9 @@ describe('browser session helpers', () => {
   });
 
   it('normalizes tenant urls to the SAC app route', () => {
-    expect(ensureSacAppUrl('https://decisioninc-1.eu10.hcs.cloud.sap')).toBe('https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html');
-    expect(ensureSacAppUrl('https://decisioninc-1.eu10.hcs.cloud.sap/')).toBe('https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html');
-    expect(ensureSacAppUrl('https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html')).toBe('https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html');
+    expect(ensureSacAppUrl('https://tenant.example.invalid')).toBe('https://tenant.example.invalid/sap/fpa/ui/app.html');
+    expect(ensureSacAppUrl('https://tenant.example.invalid/')).toBe('https://tenant.example.invalid/sap/fpa/ui/app.html');
+    expect(ensureSacAppUrl('https://tenant.example.invalid/sap/fpa/ui/app.html')).toBe('https://tenant.example.invalid/sap/fpa/ui/app.html');
   });
 
   it('launches a headed persistent context and reuses the first page', async () => {
@@ -23,12 +23,12 @@ describe('browser session helpers', () => {
     const existingPage = {
       screenshot,
       goto: vi.fn(),
-      url: () => 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html'
+      url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html'
     };
     const newPage = {
       screenshot: vi.fn(),
       goto: vi.fn(),
-      url: () => 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html'
+      url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html'
     };
     const close = vi.fn().mockResolvedValue(undefined);
     const launchPersistentContext = vi.fn().mockResolvedValue({
@@ -49,8 +49,8 @@ describe('browser session helpers', () => {
     const session = await launchPersistentBrowserSession(
       {
         name: 'sandbox',
-        tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-        defaultAccount: 'e.tanev@decisioninc.com',
+        tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+        defaultAccount: 'sandbox@example.invalid',
         browserChannel: 'chrome',
         userDataDir,
         defaultEvidenceDir: path.join(root, 'profile', 'evidence')

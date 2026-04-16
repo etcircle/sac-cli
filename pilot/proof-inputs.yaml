@@ -1,6 +1,7 @@
 tenant:
-  baseUrl: https://decisioninc-1.eu10.hcs.cloud.sap
-  tenantId: J
+  baseUrl: https://tenant.example.invalid
+  tenantId: EXAMPLE
+  profile: pilot-sandbox
 
 sources:
   handoff: sac-agent-handover-2026-04-15

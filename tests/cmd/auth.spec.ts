@@ -25,7 +25,7 @@ describe('auth command wiring', () => {
     });
 
     const result = await runCli(
-      ['--json', '--profile', 'sandbox', 'auth', 'login', '--tenant', 'https://decisioninc-1.eu10.hcs.cloud.sap'],
+      ['--json', '--profile', 'sandbox', 'auth', 'login', '--tenant', 'https://tenant.example.invalid'],
       {
         authServices: {
           login,
@@ -38,7 +38,7 @@ describe('auth command wiring', () => {
 
     expect(login).toHaveBeenCalledWith({
       profileName: 'sandbox',
-      tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap',
+      tenantUrl: 'https://tenant.example.invalid',
       defaultAccount: undefined,
       browserChannel: undefined,
       notes: undefined,
@@ -56,7 +56,7 @@ describe('auth command wiring', () => {
   });
 
   it('requires an explicit --profile for auth login', async () => {
-    const result = await runCli(['--json', 'auth', 'login', '--tenant', 'https://decisioninc-1.eu10.hcs.cloud.sap']);
+    const result = await runCli(['--json', 'auth', 'login', '--tenant', 'https://tenant.example.invalid']);
 
     expect(result.exitCode).toBe(ExitCode.ProfileRequired);
     expect(JSON.parse(result.stdout)).toEqual({
@@ -108,8 +108,8 @@ describe('auth command wiring', () => {
     const store = createProfileStore(paths);
     await store.saveProfile({
       name: 'sandbox',
-      tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-      defaultAccount: 'e.tanev@decisioninc.com',
+      tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      defaultAccount: 'sandbox@example.invalid',
       browserChannel: 'chrome',
       userDataDir: paths.browserUserDataDir('sandbox'),
       defaultEvidenceDir: paths.evidenceDir('sandbox')

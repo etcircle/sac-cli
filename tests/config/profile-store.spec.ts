@@ -27,8 +27,8 @@ describe('profile store', () => {
 
     await store.saveProfile({
       name: 'sandbox',
-      tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-      defaultAccount: 'e.tanev@decisioninc.com',
+      tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      defaultAccount: 'sandbox@example.invalid',
       browserChannel: 'chrome',
       userDataDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'browser'),
       defaultEvidenceDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'evidence'),
@@ -46,8 +46,8 @@ describe('profile store', () => {
 
     await store.saveProfile({
       name: 'sandbox',
-      tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-      defaultAccount: 'felix.cardix@gmail.com',
+      tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      defaultAccount: 'sandbox+updated@example.invalid',
       browserChannel: 'chrome',
       userDataDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'browser'),
       defaultEvidenceDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'evidence'),
@@ -59,7 +59,7 @@ describe('profile store', () => {
 
     expect(sandbox).toMatchObject({
       name: 'sandbox',
-      defaultAccount: 'felix.cardix@gmail.com',
+      defaultAccount: 'sandbox+updated@example.invalid',
       notes: 'updated profile'
     });
     expect(allProfiles.map((profile) => profile.name)).toEqual(['prod', 'sandbox']);
@@ -167,8 +167,8 @@ describe('profile store', () => {
             profiles: {
               ' sandbox ': {
                 name: 'sandbox',
-                tenantUrl: 'https://decisioninc-1.eu10.hcs.cloud.sap/sap/fpa/ui/app.html',
-                defaultAccount: 'e.tanev@decisioninc.com',
+                tenantUrl: 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+                defaultAccount: 'sandbox@example.invalid',
                 browserChannel: 'chrome',
                 userDataDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'browser'),
                 defaultEvidenceDir: path.join(homes.dataHome, 'profiles', 'sandbox', 'evidence')
