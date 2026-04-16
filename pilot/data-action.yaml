@@ -7,6 +7,7 @@ defaultModel:
 steps:
   - key: fx-trans
     name: FX_TRANS
+    description: FX Trans Logic
     type: advanced-formula
     sourceStatus: ui-preview-excerpt
     file: steps/fx_trans.af

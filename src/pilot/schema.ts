@@ -41,6 +41,7 @@ export const proofInputsSchema = z.object({
 export const dataActionStepSchema = z.object({
   key: keySchema,
   name: keySchema,
+  description: keySchema,
   type: z.literal('advanced-formula'),
   sourceStatus: z.enum(['ui-preview-excerpt', 'readback-pulled', 'planned-seed']),
   file: relativePathSchema

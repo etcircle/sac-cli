@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "id": {
+      "type": "PLANNINGSEQUENCE",
+      "name": "FA9020524E79E7C812C4D1E8D41355B",
+      "package": "t.J"
+    },
+    "description": "FX Translation - Redacted",
+    "owner": "REDACTED_OWNER",
+    "changedBy": "REDACTED_OWNER",
+    "version": 14,
+    "active": true,
+    "tmCreated": "2025-02-13T14:35:02.956Z",
+    "tmModified": "2025-05-07T08:11:22.321Z",
+    "ownerDisplayName": "Redacted Owner",
+    "changedByDisplayName": "Redacted Owner",
+    "resource": {
+      "sharedToAny": true,
+      "canShare": true,
+      "auth": {
+        "read": true,
+        "update": true,
+        "delete": true
+      },
+      "ancestorPath": [
+        {
+          "resourceId": "PUBLIC",
+          "parentResId": "ROOT",
+          "name": "PUBLIC",
+          "spaceId": null,
+          "description": "Public"
+        },
+        {
+          "resourceId": "REDACTED_FOLDER_ID",
+          "parentResId": "PUBLIC",
+          "name": "01. Redacted Folder",
+          "spaceId": null,
+          "description": "Redacted Folder"
+        }
+      ]
+    }
+  }
+}

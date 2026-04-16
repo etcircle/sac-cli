@@ -4,11 +4,19 @@ import { type CommandEnvelope } from '../app/output.js';
 import { type ConfigPaths, createConfigPaths } from '../config/paths.js';
 import { type ProfileStore, createProfileStore } from '../config/profile-store.js';
 import {
+  validatePilotFormula,
+  type ValidatePilotDependencies
+} from '../formula/validate.js';
+import {
   type VerifyPilotDependencies,
   verifyPilotFormula
 } from '../formula/verify-pilot.js';
 
 export type FormulaServices = {
+  validate(input: {
+    projectRoot?: string;
+    profileName?: string;
+  }): Promise<CommandEnvelope>;
   verifyPilot(input: {
     projectRoot?: string;
     evidenceDir?: string;
@@ -21,10 +29,11 @@ export type FormulaGlobalOptions = {
   enableCommands?: string[];
 };
 
-export type FormulaCommandDependencies = Pick<VerifyPilotDependencies, 'runtime' | 'sessionFactory' | 'probe'> & {
-  paths?: ConfigPaths;
-  store?: ProfileStore;
-};
+export type FormulaCommandDependencies = Pick<VerifyPilotDependencies, 'runtime' | 'sessionFactory' | 'probe'>
+  & Pick<ValidatePilotDependencies, 'objectMgrFactory'> & {
+    paths?: ConfigPaths;
+    store?: ProfileStore;
+  };
 
 export type RegisterFormulaCommandsOptions = {
   getOptions: () => FormulaGlobalOptions;
@@ -38,6 +47,20 @@ export function createFormulaServices(dependencies: FormulaCommandDependencies =
   const store = dependencies.store ?? createProfileStore(paths);
 
   return {
+    async validate(input) {
+      const result = await validatePilotFormula(input, {
+        paths,
+        store,
+        runtime: dependencies.runtime,
+        sessionFactory: dependencies.sessionFactory,
+        objectMgrFactory: dependencies.objectMgrFactory
+      });
+
+      return {
+        ok: true,
+        data: result
+      };
+    },
     async verifyPilot(input) {
       const result = await verifyPilotFormula(input, {
         paths,
@@ -61,6 +84,20 @@ export function registerFormulaCommands(formulaCommand: Command, options: Regist
   const guard = () => {
     assertCommandEnabled(options.getOptions().enableCommands, 'formula');
   };
+
+  formulaCommand
+    .command('validate')
+    .description('Run objectmgr Advanced Formula validation for the frozen pilot step')
+    .option('--root <path>', 'Project root containing the checked-in pilot/ bundle')
+    .action(async (commandOptions: { root?: string }) => {
+      guard();
+      options.setEnvelope(
+        await formulaServices.validate({
+          projectRoot: commandOptions.root,
+          profileName: options.getOptions().profile
+        })
+      );
+    });
 
   formulaCommand
     .command('verify-pilot')

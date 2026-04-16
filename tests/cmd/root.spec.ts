@@ -120,6 +120,20 @@ describe('root CLI', () => {
     });
   });
 
+  it('blocks disabled data-action commands with a stable JSON envelope', async () => {
+    const result = await runCli(['--json', '--enable-commands', 'auth,formula,doctor', 'data-action', 'get']);
+
+    expect(result.exitCode).toBe(ExitCode.CommandDisabled);
+    expect(JSON.parse(result.stdout ?? '')).toEqual({
+      ok: false,
+      error: {
+        code: 'COMMAND_DISABLED',
+        message: 'Command family "data-action" is disabled by --enable-commands.',
+        exitCode: ExitCode.CommandDisabled
+      }
+    });
+  });
+
   it('validates the frozen pilot bundle through doctor pilot', async () => {
     const homes = await makeIsolatedHomes();
     const bundleRoot = await writePilotBundle(homes.root);

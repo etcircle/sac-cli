@@ -5,7 +5,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { createConfigPaths } from '../../src/config/paths.js';
 import { createProfileStore } from '../../src/config/profile-store.js';
-import { verifyPilotFormula } from '../../src/formula/verify-pilot.js';
+import { probeFormulaEditorViaDom, verifyPilotFormula } from '../../src/formula/verify-pilot.js';
 import { PILOT_RUNTIME_TENANT_URL, PILOT_PROFILE_NAME, writePilotBundle, PILOT_STEP_SOURCE } from '../helpers/pilot-bundle.js';
 
 async function makeIsolatedHomes() {
@@ -37,6 +37,95 @@ function createSessionFactory(goto: ReturnType<typeof vi.fn>) {
 }
 
 describe('formula verify-pilot service', () => {
+  it('rejects the DOM probe when the reopened route drifts away from the target editor route', async () => {
+    await expect(
+      probeFormulaEditorViaDom({
+        page: {
+          goto: vi.fn(),
+          url: () => `${PILOT_RUNTIME_TENANT_URL}#wrong-route`,
+          screenshot: vi.fn(),
+          evaluate: vi.fn().mockResolvedValue({
+            currentUrl: `${PILOT_RUNTIME_TENANT_URL}#wrong-route`,
+            title: 'Wrong Route',
+            expectedSource: PILOT_STEP_SOURCE,
+            editorCandidates: [
+              {
+                selector: '.monaco-editor .view-lines',
+                value: PILOT_STEP_SOURCE,
+                visible: true
+              }
+            ],
+            validationMessages: []
+          })
+        },
+        inspection: {} as never,
+        expectedSource: PILOT_STEP_SOURCE,
+        targetUrl: `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`
+      })
+    ).rejects.toThrow(/reopened editor route/i);
+  });
+
+  it('rejects a visible non-editor exact match instead of treating it as editor truth', async () => {
+    await expect(
+      probeFormulaEditorViaDom({
+        page: {
+          goto: vi.fn(),
+          url: () => `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`,
+          screenshot: vi.fn(),
+          evaluate: vi.fn().mockResolvedValue({
+            currentUrl: `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`,
+            title: 'Editor',
+            expectedSource: PILOT_STEP_SOURCE,
+            editorCandidates: [
+              {
+                selector: '[class*="formula"]',
+                value: PILOT_STEP_SOURCE,
+                visible: true
+              }
+            ],
+            validationMessages: []
+          })
+        },
+        inspection: {} as never,
+        expectedSource: PILOT_STEP_SOURCE,
+        targetUrl: `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`
+      })
+    ).rejects.toThrow(/could not read advanced formula text/i);
+  });
+
+  it('ignores hidden exact-match candidates and prefers a visible editor surface', async () => {
+    const result = await probeFormulaEditorViaDom({
+      page: {
+        goto: vi.fn(),
+        url: () => `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`,
+        screenshot: vi.fn(),
+        evaluate: vi.fn().mockResolvedValue({
+          currentUrl: `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`,
+          title: 'Editor',
+          expectedSource: PILOT_STEP_SOURCE,
+          editorCandidates: [
+            {
+              selector: '.hidden-preview',
+              value: PILOT_STEP_SOURCE,
+              visible: false
+            },
+            {
+              selector: '.monaco-editor .view-lines',
+              value: PILOT_STEP_SOURCE,
+              visible: true
+            }
+          ],
+          validationMessages: []
+        })
+      },
+      inspection: {} as never,
+      expectedSource: PILOT_STEP_SOURCE,
+      targetUrl: `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/expected`
+    });
+
+    expect(result.selectorUsed).toBe('.monaco-editor .view-lines');
+  });
+
   it('reuses the resolved runtime profile tenant, writes manifest artifacts, and proves a stable hash across two runs', async () => {
     const homes = await makeIsolatedHomes();
     const bundleRoot = await writePilotBundle(homes.root);
@@ -88,6 +177,7 @@ describe('formula verify-pilot service', () => {
       evidenceDir,
       matchesFrozenSource: true,
       validationStatus: 'unavailable',
+      validationSource: 'dom-fallback',
       repeatabilityStable: true
     });
     expect(result.normalizedHash).toMatch(/^[a-f0-9]{64}$/);
@@ -111,6 +201,7 @@ describe('formula verify-pilot service', () => {
         status: 'unavailable',
         issues: []
       },
+      validationSource: 'dom-fallback',
       normalizedHash: result.normalizedHash
     });
     expect(reopenCheck).toMatchObject({
@@ -121,11 +212,13 @@ describe('formula verify-pilot service', () => {
         stable: true,
         stableHash: result.normalizedHash,
         hashes: [result.normalizedHash, result.normalizedHash]
-      }
+      },
+      validationSource: 'dom-fallback'
     });
     expect(validationResult).toEqual({
       status: 'unavailable',
       issues: [],
+      validationSource: 'dom-fallback',
       matchesFrozenSource: true,
       normalizedHash: result.normalizedHash,
       machineReadable: true
@@ -208,6 +301,7 @@ describe('formula verify-pilot service', () => {
           column: 5
         }
       ],
+      validationSource: 'dom-fallback',
       matchesFrozenSource: true,
       normalizedHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       machineReadable: true

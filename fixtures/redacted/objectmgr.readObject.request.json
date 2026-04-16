@@ -1,0 +1,27 @@
+{
+  "action": "readObject",
+  "data": {
+    "p1": {
+      "type": "PLANNINGSEQUENCE",
+      "name": "FA9020524E79E7C812C4D1E8D41355B",
+      "package": "t.J"
+    },
+    "p2": false,
+    "p3": {
+      "bIncludeAdditionalData": true,
+      "resourceOptions": {
+        "metadata": {
+          "favResId": true,
+          "ancestorPath": {
+            "name": true,
+            "description": true,
+            "access": true,
+            "spaceId": true,
+            "parentResId": true
+          },
+          "access": true
+        }
+      }
+    }
+  }
+}

@@ -12,13 +12,19 @@ What exists right now:
 - profile-backed headed auth bootstrap with persistent browser contexts
 - frozen `pilot/` bundle for proof inputs, artifact manifests, and evidence contract
 - `doctor pilot` validation with deterministic bundle fingerprints
+- read-only `objectmgr` seam helpers for the frozen pilot lane
+- real `data-action get` / `data-action steps` bundle-first commands with explicit `bundle` / `deployment` / `live` output sections
+- real `formula validate` for the frozen pilot step via `objectmgr`
 - `formula verify-pilot` for a two-pass AF readback proof against the frozen pilot bundle with no save/apply calls implemented in this repo
 - root scripts for `build`, `typecheck`, `test`, `test:contract`, `test:live`, and `cli`
 
 What does not exist yet:
 - real SAC auth/bootstrap smoke on the live tenant
-- seam clients beyond the narrow pilot readback probe
 - mutation/apply/save flows
+- broad SAC discovery or write surfaces beyond the frozen pilot lane
+
+Current source-of-truth plan:
+- `docs/plans/2026-04-16-w1-6-read-only-seam-spine.md` — the W1.6 implementation plan that grounded the current read-only `objectmgr` spine
 
 ## Commands
 
@@ -26,7 +32,10 @@ What does not exist yet:
 npm run cli -- --help
 npm run cli -- --json doctor session
 npm run cli -- --json doctor pilot
-npm run cli -- --json --profile <name> formula verify-pilot
+npm run cli -- --json --profile <name> data-action get --root .
+npm run cli -- --json --profile <name> data-action steps --root .
+npm run cli -- --json --profile <name> formula validate --root .
+npm run cli -- --json --profile <name> formula verify-pilot --root .
 ```
 
 Do not commit evidence output from real runs. `formula verify-pilot` writes local artifacts that can include your resolved tenant URL and target route details.

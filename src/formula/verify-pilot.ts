@@ -15,19 +15,7 @@ import {
   ensureSacAppUrl,
   launchPersistentBrowserSession
 } from '../session/browser-session.js';
-
-export type FormulaValidationIssue = {
-  code: string;
-  message: string;
-  severity: 'error';
-  line: number | null;
-  column: number | null;
-};
-
-export type FormulaValidationResult = {
-  status: 'invalid' | 'unavailable';
-  issues: FormulaValidationIssue[];
-};
+import { type FormulaValidationResult } from './types.js';
 
 export type FormulaProbeRun = {
   reopenedUrl: string;
@@ -77,6 +65,7 @@ type NormalizedReadback = {
     normalizedSource: string;
   };
   validation: FormulaValidationResult;
+  validationSource: 'dom-fallback';
 };
 
 type ObservedRun = {
@@ -147,6 +136,14 @@ function createFormulaReadbackFailedError(): CliError {
   );
 }
 
+function createFormulaEditorRouteMismatchError(targetUrl: string, reopenedUrl: string): CliError {
+  return new CliError(
+    'FORMULA_EDITOR_ROUTE_MISMATCH',
+    `The reopened editor route did not stay on the target data-action editor surface. Expected "${targetUrl}", got "${reopenedUrl}".`,
+    ExitCode.GeneralError
+  );
+}
+
 function createFormulaRepeatabilityFailedError(hashes: string[], evidenceDir: string): CliError {
   return new CliError(
     'FORMULA_REPEATABILITY_FAILED',
@@ -179,16 +176,31 @@ async function createSessionFactory(
 }
 
 function selectBestEditorCandidate(
-  candidates: Array<{ selector: string; value: string }>,
+  candidates: Array<{ selector: string; value: string; visible?: boolean }>,
   expectedSource: string
-): { selector: string; value: string } | null {
+): { selector: string; value: string; visible?: boolean } | null {
   const expectedNormalized = normalizeFormulaSource(expectedSource);
   const expectedLines = expectedNormalized.split('\n').filter(Boolean);
+  const trustedSelectors = new Set([
+    'textarea',
+    '.monaco-editor textarea',
+    '.monaco-editor .view-lines',
+    '.monaco-editor .view-line',
+    '[role="textbox"]'
+  ]);
 
-  let best: { selector: string; value: string } | null = null;
+  let best: { selector: string; value: string; visible?: boolean } | null = null;
   let bestScore = Number.NEGATIVE_INFINITY;
 
   for (const candidate of candidates) {
+    if (!trustedSelectors.has(candidate.selector)) {
+      continue;
+    }
+
+    if (candidate.visible === false) {
+      continue;
+    }
+
     const value = normalizeFormulaSource(candidate.value);
     if (!value) {
       continue;
@@ -268,7 +280,7 @@ export async function probeFormulaEditorViaDom(input: {
       ];
 
       const seenEditorValues = new Set<string>();
-      const editorCandidates: Array<{ selector: string; value: string }> = [];
+      const editorCandidates: Array<{ selector: string; value: string; visible: boolean }> = [];
       for (const selector of selectorCandidates) {
         for (const element of Array.from(document.querySelectorAll(selector))) {
           const rawValue = typeof (element as { value?: unknown }).value === 'string'
@@ -284,7 +296,14 @@ export async function probeFormulaEditorViaDom(input: {
             continue;
           }
           seenEditorValues.add(key);
-          editorCandidates.push({ selector, value });
+          const computedStyle = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const visible = computedStyle.display !== 'none'
+            && computedStyle.visibility !== 'hidden'
+            && Number(computedStyle.opacity || '1') > 0
+            && rect.width > 0
+            && rect.height > 0;
+          editorCandidates.push({ selector, value, visible });
         }
       }
 
@@ -315,6 +334,12 @@ export async function probeFormulaEditorViaDom(input: {
   const bestCandidate = selectBestEditorCandidate(snapshot.editorCandidates, snapshot.expectedSource);
   if (!bestCandidate) {
     throw createFormulaReadbackFailedError();
+  }
+
+  const reopenedRoute = new URL(snapshot.currentUrl).hash;
+  const targetRoute = new URL(input.targetUrl).hash;
+  if (reopenedRoute !== targetRoute) {
+    throw createFormulaEditorRouteMismatchError(input.targetUrl, snapshot.currentUrl);
   }
 
   return {
@@ -386,7 +411,8 @@ function normalizeObservedRun(input: {
       selectorUsed: input.probeRun.selectorUsed,
       normalizedSource: observedNormalized
     },
-    validation: input.probeRun.validation
+    validation: input.probeRun.validation,
+    validationSource: 'dom-fallback'
   };
 }
 
@@ -470,7 +496,7 @@ async function assertManifestArtifactsExist(evidenceDir: string, inspection: Pil
 export async function verifyPilotFormula(
   input: VerifyPilotFormulaInput = {},
   deps: VerifyPilotDependencies = {}
-): Promise<{ status: 'readback-stable'; mode: 'non-mutating'; profile: string; bundleRoot: string; evidenceDir: string; bundleFingerprint: string; normalizedHash: string; matchesFrozenSource: boolean; validationStatus: FormulaValidationResult['status']; repeatabilityStable: true; artifacts: Record<string, string> }> {
+): Promise<{ status: 'readback-stable'; mode: 'non-mutating'; profile: string; bundleRoot: string; evidenceDir: string; bundleFingerprint: string; normalizedHash: string; matchesFrozenSource: boolean; validationStatus: FormulaValidationResult['status']; validationSource: 'dom-fallback'; repeatabilityStable: true; artifacts: Record<string, string> }> {
   const projectRoot = input.projectRoot ?? process.cwd();
   const inspection = await inspectPilotBundle(projectRoot);
   const paths = deps.paths ?? createConfigPaths();
@@ -515,6 +541,7 @@ export async function verifyPilotFormula(
   const validationArtifact = {
     status: firstRun.validation.status,
     issues: firstRun.validation.issues,
+    validationSource: 'dom-fallback' as const,
     matchesFrozenSource: firstRun.normalized.comparison.matchesFrozenSource,
     normalizedHash: firstRun.normalizedHash,
     machineReadable: true
@@ -527,6 +554,7 @@ export async function verifyPilotFormula(
     pilotTenantBaseUrl: inspection.proofInputs.tenant.baseUrl,
     resolvedTenantUrl: ensureSacAppUrl(profile.tenantUrl),
     targetUrl,
+    validationSource: 'dom-fallback' as const,
     target: {
       storyRoute: inspection.proofInputs.story.route,
       dataActionRoute: inspection.proofInputs.dataAction.route,
@@ -558,6 +586,7 @@ export async function verifyPilotFormula(
     `profile=${profile.name}`,
     `bundleFingerprint=${inspection.bundleFingerprint}`,
     `targetUrl=${targetUrl}`,
+    'validationSource=dom-fallback',
     `matchesFrozenSource=${String(firstRun.normalized.comparison.matchesFrozenSource)}`,
     `validationStatus=${firstRun.validation.status}`,
     `repeatabilityStable=${String(repeatabilityStable)}`,
@@ -605,6 +634,7 @@ export async function verifyPilotFormula(
     normalizedHash: firstRun.normalizedHash,
     matchesFrozenSource: firstRun.normalized.comparison.matchesFrozenSource,
     validationStatus: firstRun.validation.status,
+    validationSource: 'dom-fallback',
     repeatabilityStable: true,
     artifacts
   };

@@ -1,5 +1,6 @@
 import { Command, CommanderError } from 'commander';
 import { registerAuthCommands, type AuthServices } from './auth.js';
+import { registerDataActionCommands, type DataActionServices } from './data-action.js';
 import { registerFormulaCommands, type FormulaServices } from './formula.js';
 import { assertCommandEnabled, CliError } from '../app/command-guard.js';
 import { ExitCode } from '../app/exit-codes.js';
@@ -31,6 +32,7 @@ type CaptureState = {
 
 export type RunCliDependencies = {
   authServices?: AuthServices;
+  dataActionServices?: DataActionServices;
   formulaServices?: FormulaServices;
 };
 
@@ -76,19 +78,6 @@ function createProgram(
 
   const getOptions = (): GlobalOptions => program.opts<GlobalOptions>();
 
-  const registerPlaceholder = (family: string, command: Command, summary: string) => {
-    command.action(() => {
-      assertCommandEnabled(getOptions().enableCommands, family);
-      envelope = {
-        ok: true,
-        data: {
-          status: 'not-implemented',
-          command: summary
-        }
-      };
-    });
-  };
-
   const auth = program.command('auth').description('Manage SAC browser-backed auth profiles');
   registerAuthCommands(auth, {
     getOptions,
@@ -98,9 +87,14 @@ function createProgram(
     authServices: dependencies.authServices
   });
 
-  const dataAction = program.command('data-action').description('Read data action metadata');
-  registerPlaceholder('data-action', dataAction.command('get').description('Get a data action target'), 'data-action get');
-  registerPlaceholder('data-action', dataAction.command('steps').description('List data action steps'), 'data-action steps');
+  const dataAction = program.command('data-action').description('Read frozen pilot data-action metadata and live summaries');
+  registerDataActionCommands(dataAction, {
+    getOptions,
+    setEnvelope: (nextEnvelope) => {
+      envelope = nextEnvelope;
+    },
+    dataActionServices: dependencies.dataActionServices
+  });
 
   const formula = program.command('formula').description('Validate and verify Advanced Formula artifacts');
   registerFormulaCommands(formula, {

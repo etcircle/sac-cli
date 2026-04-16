@@ -1,0 +1,27 @@
+{
+  "action": "callFunction",
+  "data": [
+    "PLANNINGSEQUENCE",
+    "validate",
+    [
+      {
+        "scope": "DESIGNER",
+        "sequenceMetadata": {
+          "version": "2025.19",
+          "defaultCubeId": "C9dksk0o57hlt1jra87he2vh67",
+          "encounteredVersionLimit": false,
+          "planningSteps": [
+            {
+              "id": "39357048-8119-4677-3365-911086985863",
+              "name": "FX_TRANS",
+              "description": "FX Trans Logic",
+              "stepType": "SCRIPT",
+              "panelType": "TEXTUAL",
+              "scriptContent": "CONFIG.GENERATE_UNBOOKED_DATA = OFF\nMEMBERSET [d/Measures] = \"AMOUNT_YTD\"\nMEMBERSET [d/C_CURRENCY] = \"LC\"\nMEMBERSET [d/C_COMP_CODE] = BASEMEMBER([d/C_COMP_CODE], %C_COMP_CODE%)\nMEMBERSET [d/Date] = BASEMEMBER([d/Date].[h/FYP], %Date%)\nMEMBERSET [d/C_AUDITTRAIL] = BASEMEMBER([d/C_AUDITTRAIL].[h/PARENTH1], \"AU_CONSOL_TOT\")\nMEMBERSET [d/C_ACC] = BASEMEMBER([d/C_ACC].[h/parentId], %C_ACC%)\nVARIABLEMEMBER #FL_MVT_AVG OF [d/C_FLOW]\nVARIABLEMEMBER #FL_MVT_OPE OF [d/C_FLOW]\nVARIABLEMEMBER #FL_MVT_ACQ OF [d/C_FLOW]\nVARIABLEMEMBER #FL_MVT_ACQ_RCUR OF [d/C_FLOW]\n\nIF [d/C_ACC].[p/C_RATETYPE] = (\"HISFLOW\", \"RESFLOW\", \"CTAFLOW\") AND [d/C_FLOW].[p/DIMLIST_FX] = \"CONV_OPE\" THEN\n    // Keep opening balances sourced from COPYOPE.\nELSE\n    DELETE([d/C_CURRENCY] = %TargetCurrency%)\nENDIF"
+            }
+          ]
+        }
+      }
+    ]
+  ]
+}
