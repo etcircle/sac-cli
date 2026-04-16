@@ -6,6 +6,44 @@ import {
 } from '../helpers/objectmgr-fixtures.js';
 
 describe('objectmgr validatePlanningSequenceStep contract', () => {
+  it('submits a captured validate payload verbatim and normalizes the response', async () => {
+    const expectedRequest = await readObjectMgrValidateRequestFixture() as ValidatePlanningSequenceStepRequest;
+    const responseFixture = await readObjectMgrValidateResponseFixture();
+    const transport = vi.fn().mockResolvedValue(responseFixture);
+    const client = createObjectMgrClient({
+      tenantId: 'J',
+      transport
+    });
+
+    const result = await client.validatePlanningSequenceRequest({
+      stepId: '39357048-8119-4677-3365-911086985863',
+      request: expectedRequest
+    });
+
+    expect(transport).toHaveBeenCalledWith({
+      method: 'POST',
+      path: '/sap/fpa/services/rest/epm/objectmgr?tenant=J',
+      headers: {
+        accept: 'application/json, text/javascript, */*; q=0.01',
+        'content-type': 'application/json;charset=UTF-8',
+        'x-requested-with': 'XMLHttpRequest'
+      },
+      body: expectedRequest
+    });
+    expect(result).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'UPDATED_OTHER_MODEL',
+          message: 'UPDATED_OTHER_MODEL: C_RATES',
+          severity: 'error',
+          line: 0,
+          column: 0
+        }
+      ]
+    });
+  });
+
   it('builds the captured validate payload and normalizes the response', async () => {
     const expectedRequest = await readObjectMgrValidateRequestFixture() as ValidatePlanningSequenceStepRequest;
     const responseFixture = await readObjectMgrValidateResponseFixture();

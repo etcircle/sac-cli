@@ -7,6 +7,15 @@ export type BrowserPage = {
   url(): string;
   screenshot(options: { path: string; fullPage?: boolean }): Promise<unknown>;
   evaluate?<Result, Arg = undefined>(pageFunction: (arg: Arg) => Result | Promise<Result>, arg: Arg): Promise<Result>;
+  waitForRequest?(
+    predicate: (request: BrowserRequest) => boolean,
+    options?: { timeout?: number }
+  ): Promise<BrowserRequest>;
+};
+
+export type BrowserRequest = {
+  url(): string;
+  postData(): string | null;
 };
 
 export type BrowserContext = {

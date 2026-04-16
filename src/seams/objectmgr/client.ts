@@ -122,6 +122,11 @@ export type ValidatePlanningSequenceStepRequest = {
   ];
 };
 
+export type ValidatePlanningSequenceRequest = {
+  action: 'callFunction';
+  data: unknown[];
+};
+
 type CreateObjectMgrClientInput = {
   tenantId?: string;
   csrfToken?: string | null;
@@ -471,6 +476,20 @@ export function createObjectMgrClient(input: CreateObjectMgrClientInput) {
   const path = buildObjectMgrPath(input.tenantId ?? 'UNKNOWN');
   const headers = buildObjectMgrHeaders(input.csrfToken ?? null);
 
+  async function validatePlanningSequenceRequest(input: {
+    stepId: string;
+    request: ValidatePlanningSequenceRequest;
+  }): Promise<FormulaValidationResult> {
+    const response = await transport<ObjectMgrValidateResponse>({
+      method: 'POST',
+      path,
+      headers,
+      body: input.request
+    });
+
+    return normalizeValidatePlanningSequenceResponse(response, input.stepId);
+  }
+
   return {
     async readPlanningSequence(request: ReadPlanningSequenceInput): Promise<PlanningSequenceSummary> {
       const response = await transport<ObjectMgrReadObjectResponse>({
@@ -484,14 +503,12 @@ export function createObjectMgrClient(input: CreateObjectMgrClientInput) {
     },
 
     async validatePlanningSequenceStep(request: ValidatePlanningSequenceStepInput): Promise<FormulaValidationResult> {
-      const response = await transport<ObjectMgrValidateResponse>({
-        method: 'POST',
-        path,
-        headers,
-        body: createValidatePlanningSequenceStepRequest(request)
+      return validatePlanningSequenceRequest({
+        stepId: request.step.id,
+        request: createValidatePlanningSequenceStepRequest(request)
       });
+    },
 
-      return normalizeValidatePlanningSequenceResponse(response, request.step.id);
-    }
+    validatePlanningSequenceRequest
   };
 }
