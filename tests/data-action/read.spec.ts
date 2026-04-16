@@ -14,13 +14,17 @@ async function makeIsolatedHomes() {
   return { root, configHome, dataHome };
 }
 
-function createSessionFactory(goto: ReturnType<typeof vi.fn>, close = vi.fn().mockResolvedValue(undefined)) {
+function createSessionFactory(
+  goto: ReturnType<typeof vi.fn>,
+  close = vi.fn().mockResolvedValue(undefined),
+  runtimeContext = { tenantId: 'J', csrfToken: 'csrf-token', tenantDescription: '9AA1C' }
+) {
   return async () => ({
     page: {
       goto,
       url: () => `${PILOT_RUNTIME_TENANT_URL}#shell`,
       screenshot: vi.fn(),
-      evaluate: vi.fn()
+      evaluate: vi.fn().mockResolvedValue(runtimeContext)
     },
     context: {
       pages: () => [],
@@ -100,9 +104,13 @@ describe('data-action read services', () => {
       }
     );
 
-    expect(goto).toHaveBeenCalledWith(PILOT_RUNTIME_TENANT_URL, { waitUntil: 'domcontentloaded' });
+    expect(goto).toHaveBeenCalledWith(
+      `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863`,
+      { waitUntil: 'domcontentloaded' }
+    );
     expect(objectMgrFactory).toHaveBeenCalledWith({
-      tenantId: 'EXAMPLE',
+      tenantId: 'J',
+      csrfToken: 'csrf-token',
       page: expect.objectContaining({
         goto,
         evaluate: expect.any(Function)

@@ -1,5 +1,5 @@
 import type { BrowserPage } from '../../session/browser-session.js';
-import { pageFetchJson } from '../../session/page-fetch.js';
+import { pageFetchJson, readSacRuntimeContext } from '../../session/page-fetch.js';
 import type { FormulaValidationIssue, FormulaValidationResult, FormulaValidationSeverity } from '../../formula/types.js';
 
 export type ObjectMgrTransportRequest = {
@@ -123,7 +123,8 @@ export type ValidatePlanningSequenceStepRequest = {
 };
 
 type CreateObjectMgrClientInput = {
-  tenantId: string;
+  tenantId?: string;
+  csrfToken?: string | null;
   transport?: ObjectMgrTransport;
   page?: BrowserPage;
   tenantUrl?: string;
@@ -251,25 +252,29 @@ function buildTransport(input: CreateObjectMgrClientInput): ObjectMgrTransport {
     throw new Error('objectmgr client requires either a transport or both page and tenantUrl');
   }
 
-  return (request) => pageFetchJson({
-    page,
-    tenantUrl,
-    method: request.method,
-    path: request.path,
-    headers: request.headers,
-    body: request.body
-  });
+  return async (request) => {
+    const runtimeContext = await readSacRuntimeContext(page, input.tenantId);
+    return pageFetchJson({
+      page,
+      tenantUrl,
+      method: request.method,
+      path: buildObjectMgrPath(runtimeContext.tenantId),
+      headers: buildObjectMgrHeaders(runtimeContext.csrfToken ?? input.csrfToken ?? null),
+      body: request.body
+    });
+  };
 }
 
 function buildObjectMgrPath(tenantId: string): string {
   return `/sap/fpa/services/rest/epm/objectmgr?tenant=${encodeURIComponent(tenantId)}`;
 }
 
-function buildObjectMgrHeaders(): Record<string, string> {
+function buildObjectMgrHeaders(csrfToken?: string | null): Record<string, string> {
   return {
     accept: 'application/json, text/javascript, */*; q=0.01',
     'content-type': 'application/json;charset=UTF-8',
-    'x-requested-with': 'XMLHttpRequest'
+    'x-requested-with': 'XMLHttpRequest',
+    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
   };
 }
 
@@ -463,8 +468,8 @@ export function createValidatePlanningSequenceStepRequest(
 
 export function createObjectMgrClient(input: CreateObjectMgrClientInput) {
   const transport = buildTransport(input);
-  const path = buildObjectMgrPath(input.tenantId);
-  const headers = buildObjectMgrHeaders();
+  const path = buildObjectMgrPath(input.tenantId ?? 'UNKNOWN');
+  const headers = buildObjectMgrHeaders(input.csrfToken ?? null);
 
   return {
     async readPlanningSequence(request: ReadPlanningSequenceInput): Promise<PlanningSequenceSummary> {

@@ -12,6 +12,7 @@ import {
   ensureSacAppUrl,
   launchPersistentBrowserSession
 } from '../session/browser-session.js';
+import { readSacRuntimeContext } from '../session/page-fetch.js';
 import { createObjectMgrClient } from '../seams/objectmgr/client.js';
 import { type FormulaValidationResult } from './types.js';
 
@@ -22,6 +23,7 @@ export type ValidatePilotFormulaInput = {
 
 export type FormulaObjectMgrClientFactory = (input: {
   tenantId: string;
+  csrfToken?: string | null;
   page: BrowserPage;
   tenantUrl: string;
 }) => ReturnType<typeof createObjectMgrClient>;
@@ -55,6 +57,12 @@ function resolveProofStep(inspection: PilotBundleInspection) {
   }
 
   return proofStep;
+}
+
+function buildTargetUrl(profile: SacCliProfile, route: string): string {
+  const targetUrl = new URL(ensureSacAppUrl(profile.tenantUrl));
+  targetUrl.hash = route.startsWith('#') ? route : `#${route}`;
+  return targetUrl.toString();
 }
 
 async function readProofStepSource(inspection: PilotBundleInspection): Promise<string> {
@@ -91,9 +99,15 @@ export async function validatePilotFormula(
   const session = await sessionFactory(profile);
 
   try {
-    await session.page.goto(ensureSacAppUrl(profile.tenantUrl), { waitUntil: 'domcontentloaded' });
+    const targetUrl = buildTargetUrl(profile, inspection.proofInputs.dataAction.route);
+    await session.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    const runtimeContext = await readSacRuntimeContext(session.page, inspection.proofInputs.tenant.tenantId, {
+      requireCsrfToken: true,
+      timeoutMs: 15000
+    });
     const objectMgr = objectMgrFactory({
-      tenantId: inspection.proofInputs.tenant.tenantId,
+      tenantId: runtimeContext.tenantId,
+      csrfToken: runtimeContext.csrfToken,
       page: session.page,
       tenantUrl: profile.tenantUrl
     });

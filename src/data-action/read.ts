@@ -10,6 +10,7 @@ import {
   ensureSacAppUrl,
   launchPersistentBrowserSession
 } from '../session/browser-session.js';
+import { readSacRuntimeContext } from '../session/page-fetch.js';
 import {
   createObjectMgrClient,
   type PlanningSequenceSummary
@@ -22,6 +23,7 @@ export type ReadDataActionInput = {
 
 export type ObjectMgrClientFactory = (input: {
   tenantId: string;
+  csrfToken?: string | null;
   page: BrowserPage;
   tenantUrl: string;
 }) => ReturnType<typeof createObjectMgrClient>;
@@ -57,6 +59,12 @@ function resolveProofStep(inspection: PilotBundleInspection) {
   return proofStep;
 }
 
+function buildTargetUrl(profile: SacCliProfile, route: string): string {
+  const targetUrl = new URL(ensureSacAppUrl(profile.tenantUrl));
+  targetUrl.hash = route.startsWith('#') ? route : `#${route}`;
+  return targetUrl.toString();
+}
+
 async function readLivePlanningSequence(
   input: ReadDataActionInput,
   deps: DataActionReadDependencies,
@@ -70,9 +78,15 @@ async function readLivePlanningSequence(
   const session = await sessionFactory(profile);
 
   try {
-    await session.page.goto(ensureSacAppUrl(profile.tenantUrl), { waitUntil: 'domcontentloaded' });
+    const targetUrl = buildTargetUrl(profile, inspection.proofInputs.dataAction.route);
+    await session.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    const runtimeContext = await readSacRuntimeContext(session.page, inspection.proofInputs.tenant.tenantId, {
+      requireCsrfToken: true,
+      timeoutMs: 15000
+    });
     const objectMgr = objectMgrFactory({
-      tenantId: inspection.proofInputs.tenant.tenantId,
+      tenantId: runtimeContext.tenantId,
+      csrfToken: runtimeContext.csrfToken,
       page: session.page,
       tenantUrl: profile.tenantUrl
     });

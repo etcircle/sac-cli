@@ -1,11 +1,49 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { pageFetchJson } from '../../src/session/page-fetch.js';
+import { pageFetchJson, readSacRuntimeContext } from '../../src/session/page-fetch.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('page fetch helper', () => {
+  it('reads runtime tenant and csrf context from the live page', async () => {
+    const page = {
+      goto: vi.fn(),
+      url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      screenshot: vi.fn(),
+      evaluate: vi.fn().mockResolvedValue({
+        tenantId: 'J',
+        csrfToken: 'csrf-token',
+        tenantDescription: '9AA1C'
+      })
+    };
+
+    await expect(readSacRuntimeContext(page, 'EXAMPLE')).resolves.toEqual({
+      tenantId: 'J',
+      csrfToken: 'csrf-token',
+      tenantDescription: '9AA1C'
+    });
+  });
+
+  it('falls back to the provided tenant id when the page globals are missing', async () => {
+    const page = {
+      goto: vi.fn(),
+      url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      screenshot: vi.fn(),
+      evaluate: vi.fn().mockResolvedValue({
+        tenantId: 'EXAMPLE',
+        csrfToken: null,
+        tenantDescription: null
+      })
+    };
+
+    await expect(readSacRuntimeContext(page, 'EXAMPLE')).resolves.toEqual({
+      tenantId: 'EXAMPLE',
+      csrfToken: null,
+      tenantDescription: null
+    });
+  });
+
   it('executes fetch through page.evaluate and returns parsed JSON', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
