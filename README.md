@@ -23,8 +23,10 @@ What does not exist yet:
 - mutation/apply/save flows
 - broad SAC discovery or write surfaces beyond the frozen pilot lane
 
-Current source-of-truth plan:
-- `docs/plans/2026-04-16-w1-6-read-only-seam-spine.md` — the W1.6 implementation plan that grounded the current read-only `objectmgr` spine
+Current source-of-truth docs:
+- `docs/plans/2026-04-16-w1-7-v2-seam-harvest-program.md` — the current W1.7 / V2 program plan for scaling seam discovery and capability promotion
+- `docs/handoffs/2026-04-16-sac-cli-w1-7-v2-handover.md` — the next-session continuation brief with live proof outcomes and immediate starting points
+- `docs/plans/2026-04-16-w1-6-read-only-seam-spine.md` — historical W1.6 implementation plan that grounded the current read-only `objectmgr` spine
 
 ## Commands
 
@@ -36,6 +38,9 @@ npm run cli -- --json --profile <name> data-action get --root .
 npm run cli -- --json --profile <name> data-action steps --root .
 npm run cli -- --json --profile <name> formula validate --root .
 npm run cli -- --json --profile <name> formula verify-pilot --root .
+npm run cli -- --json --profile <name> story table inspect-menu --root .
+npm run cli -- --json --profile <name> story table inspect-cell-menu --root .
+npm run cli -- --json --profile <name> story table inspect-gates --root .
 ```
 
 Do not commit evidence output from real runs. `formula verify-pilot` writes local artifacts that can include your resolved tenant URL and target route details.

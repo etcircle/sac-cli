@@ -134,6 +134,20 @@ describe('root CLI', () => {
     });
   });
 
+  it('blocks disabled story commands with a stable JSON envelope', async () => {
+    const result = await runCli(['--json', '--enable-commands', 'auth,formula,data-action,doctor', 'story', 'configure-table']);
+
+    expect(result.exitCode).toBe(ExitCode.CommandDisabled);
+    expect(JSON.parse(result.stdout ?? '')).toEqual({
+      ok: false,
+      error: {
+        code: 'COMMAND_DISABLED',
+        message: 'Command family "story" is disabled by --enable-commands.',
+        exitCode: ExitCode.CommandDisabled
+      }
+    });
+  });
+
   it('validates the frozen pilot bundle through doctor pilot', async () => {
     const homes = await makeIsolatedHomes();
     const bundleRoot = await writePilotBundle(homes.root);
@@ -180,6 +194,7 @@ describe('root CLI', () => {
     expect(result.stdout).toContain('auth');
     expect(result.stdout).toContain('data-action');
     expect(result.stdout).toContain('formula');
+    expect(result.stdout).toContain('story');
     expect(result.stdout).toContain('doctor');
     expect(result.stdout).not.toContain('discover');
     expect(result.stdout).not.toContain('versions');

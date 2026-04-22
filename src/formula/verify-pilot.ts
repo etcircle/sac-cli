@@ -12,8 +12,10 @@ import {
   type BrowserRuntime,
   type ManagedBrowserSession,
   createDefaultBrowserRuntime,
+  ensureSacAppShell,
   ensureSacAppUrl,
-  launchPersistentBrowserSession
+  openManagedBrowserSession,
+  openSacRoute
 } from '../session/browser-session.js';
 import { type FormulaValidationResult } from './types.js';
 
@@ -114,6 +116,48 @@ export function normalizeFormulaSource(source: string): string {
     .trim();
 }
 
+function normalizeFormulaComparisonSource(source: string): string {
+  const normalizedLines = normalizeFormulaSource(source)
+    .split('\n')
+    .map((line) => line.replace(/\u200b/g, '').trim())
+    .filter((line) => {
+      if (!line) {
+        return false;
+      }
+      if (line.startsWith('// Captured from the live SAC editor body preview')) {
+        return false;
+      }
+      if (line.startsWith('// This is intentionally marked as a ui-preview-excerpt')) {
+        return false;
+      }
+      if (line.startsWith('//')) {
+        return false;
+      }
+      return true;
+    });
+
+  const mergedLines: string[] = [];
+  for (const line of normalizedLines) {
+    if (line.startsWith('AND ') && mergedLines.length > 0) {
+      mergedLines[mergedLines.length - 1] = `${mergedLines[mergedLines.length - 1]} ${line}`;
+      continue;
+    }
+
+    mergedLines.push(line);
+  }
+
+  return mergedLines
+    .map((line) => line
+      .replace(/\s*,\s*/g, ', ')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .replace(/\s+/g, ' ')
+      .replace(/^ELSE\s*\/\/.*$/g, 'ELSE')
+      .trim())
+    .join('\n')
+    .trim();
+}
+
 function buildTargetUrl(profile: SacCliProfile, route: string): string {
   const targetUrl = new URL(ensureSacAppUrl(profile.tenantUrl));
   targetUrl.hash = route.startsWith('#') ? route : `#${route}`;
@@ -172,7 +216,7 @@ async function createSessionFactory(
   runtime?: BrowserRuntime
 ): Promise<(profile: SacCliProfile) => Promise<ManagedBrowserSession>> {
   const resolvedRuntime = runtime ?? await createDefaultBrowserRuntime();
-  return async (profile: SacCliProfile) => launchPersistentBrowserSession(profile, resolvedRuntime);
+  return async (profile: SacCliProfile) => openManagedBrowserSession(profile, resolvedRuntime);
 }
 
 function selectBestEditorCandidate(
@@ -186,7 +230,8 @@ function selectBestEditorCandidate(
     '.monaco-editor textarea',
     '.monaco-editor .view-lines',
     '.monaco-editor .view-line',
-    '[role="textbox"]'
+    '[role="textbox"]',
+    'body-innerText'
   ]);
 
   let best: { selector: string; value: string; visible?: boolean } | null = null;
@@ -224,7 +269,12 @@ function selectBestEditorCandidate(
 }
 
 function createValidationResult(messages: string[]): FormulaValidationResult {
-  if (messages.length === 0) {
+  const meaningfulMessages = messages.filter((message) => {
+    const normalized = message.trim();
+    return normalized !== 'Message Strip Information' && normalized !== 'Information Message Strip';
+  });
+
+  if (meaningfulMessages.length === 0) {
     return {
       status: 'unavailable',
       issues: []
@@ -233,7 +283,7 @@ function createValidationResult(messages: string[]): FormulaValidationResult {
 
   return {
     status: 'invalid',
-    issues: messages.map((message, index) => ({
+    issues: meaningfulMessages.map((message, index) => ({
       code: `EDITOR_MESSAGE_${index + 1}`,
       message,
       severity: 'error',
@@ -241,6 +291,71 @@ function createValidationResult(messages: string[]): FormulaValidationResult {
       column: null
     }))
   };
+}
+
+function parseFormulaBodyReadback(bodyText: string): string | null {
+  const normalizedBody = String(bodyText).replace(/\r\n/g, '\n');
+  const rawLines = normalizedBody.split('\n');
+  const cleanedLines = rawLines.map((line) => line.replace(/\u200b/g, '').replace(/[ \t]+$/g, ''));
+  const formatIndex = cleanedLines.findIndex((line) => line.trim() === 'Format');
+  if (formatIndex < 0) {
+    return null;
+  }
+
+  const extracted: string[] = [];
+  for (let index = formatIndex + 1; index < cleanedLines.length; index += 1) {
+    const line = cleanedLines[index]?.trim() ?? '';
+
+    if (!line) {
+      continue;
+    }
+
+    if (
+      line === 'No errors found'
+      || line.startsWith('You can hover over functions')
+      || line === 'Tracing'
+      || line === 'Run'
+      || line === 'Settings'
+      || line === 'Close'
+      || line === 'Expand/Collapse'
+      || line === 'Tracepoints'
+      || line === 'Watch Area'
+      || line.startsWith('Please fix all errors')
+      || line.startsWith('The "C_RATES" model was updated')
+    ) {
+      break;
+    }
+
+    if (line.startsWith('//')) {
+      continue;
+    }
+
+    if (/^\d+$/.test(line)) {
+      const nextLine = cleanedLines[index + 1]?.replace(/\u200b/g, '').replace(/[ \t]+$/g, '') ?? '';
+      const trimmedNextLine = nextLine.trim();
+      if (!trimmedNextLine) {
+        continue;
+      }
+      if (trimmedNextLine.startsWith('//')) {
+        index += 1;
+        continue;
+      }
+      extracted.push(nextLine);
+      if (trimmedNextLine === 'ENDIF') {
+        break;
+      }
+      index += 1;
+      continue;
+    }
+
+    extracted.push(cleanedLines[index] ?? '');
+    if (line === 'ENDIF') {
+      break;
+    }
+  }
+
+  const candidate = extracted.join('\n').trim();
+  return candidate || null;
 }
 
 export async function probeFormulaEditorViaDom(input: {
@@ -253,104 +368,118 @@ export async function probeFormulaEditorViaDom(input: {
     throw createFormulaProbeUnavailableError();
   }
 
-  const snapshot = await input.page.evaluate(
-    ({ expectedSource }) => {
-      const normalize = (value: string) => value
-        .replace(/\r\n/g, '\n')
-        .split('\n')
-        .map((line) => line.replace(/[ \t]+$/g, ''))
-        .join('\n')
-        .trim();
+  const probeArg = {
+    expectedSource: input.expectedSource,
+    editorSelectors: [
+      'textarea',
+      '.monaco-editor textarea',
+      '.monaco-editor .view-lines',
+      '.monaco-editor .view-line',
+      '[role="textbox"]',
+      '[class*="formula"]',
+      '[data-testid*="formula"]'
+    ],
+    issueSelectors: [
+      '.marker-widget',
+      '.monaco-editor [class*="squiggly"]',
+      '[role="alert"]',
+      '.sapMMsgStrip',
+      '.sapMMessageStrip'
+    ]
+  };
 
-      const selectorCandidates = [
-        'textarea',
-        '.monaco-editor textarea',
-        '.monaco-editor .view-lines',
-        '.monaco-editor .view-line',
-        '[role="textbox"]',
-        '[class*="formula"]',
-        '[data-testid*="formula"]'
-      ];
-      const issueSelectors = [
-        '.marker-widget',
-        '.monaco-editor [class*="squiggly"]',
-        '[role="alert"]',
-        '.sapMMsgStrip',
-        '.sapMMessageStrip'
-      ];
-
-      const seenEditorValues = new Set<string>();
-      const editorCandidates: Array<{ selector: string; value: string; visible: boolean }> = [];
-      for (const selector of selectorCandidates) {
-        for (const element of Array.from(document.querySelectorAll(selector))) {
-          const rawValue = typeof (element as { value?: unknown }).value === 'string'
-            ? String((element as { value?: unknown }).value)
-            : (element.textContent ?? '');
-          const value = normalize(rawValue);
-          if (!value) {
-            continue;
-          }
-
-          const key = `${selector}\u0000${value}`;
-          if (seenEditorValues.has(key)) {
-            continue;
-          }
-          seenEditorValues.add(key);
-          const computedStyle = window.getComputedStyle(element);
-          const rect = element.getBoundingClientRect();
-          const visible = computedStyle.display !== 'none'
-            && computedStyle.visibility !== 'hidden'
-            && Number(computedStyle.opacity || '1') > 0
-            && rect.width > 0
-            && rect.height > 0;
-          editorCandidates.push({ selector, value, visible });
+  // Keep the browser callback brutally flat. `tsx`/esbuild injects `__name(...)`
+  // into nested helpers/lambdas, and Playwright then serializes that into the
+  // browser context where `__name` does not exist. No nested helpers here.
+  const probeResult = await input.page.evaluate((arg: typeof probeArg) => {
+    const seenEditorValues = new Set<string>();
+    const editorCandidates: Array<{ selector: string; value: string; visible: boolean }> = [];
+    for (const selector of arg.editorSelectors) {
+      for (const el of Array.from(document.querySelectorAll(selector))) {
+        const rawValue = typeof (el as HTMLTextAreaElement).value === 'string'
+          ? String((el as HTMLTextAreaElement).value)
+          : (el.textContent || '');
+        const normalizedRawLines = String(rawValue).replace(/\r\n/g, '\n').split('\n');
+        const trimmedRawLines: string[] = [];
+        for (const line of normalizedRawLines) {
+          trimmedRawLines.push(line.replace(/[ \t]+$/g, ''));
         }
-      }
+        const value = trimmedRawLines.join('\n').trim();
+        if (!value) continue;
 
-      const seenIssues = new Set<string>();
-      const validationMessages: string[] = [];
-      for (const selector of issueSelectors) {
-        for (const element of Array.from(document.querySelectorAll(selector))) {
-          const message = normalize(element.textContent ?? '');
-          if (!message || seenIssues.has(message)) {
-            continue;
-          }
-          seenIssues.add(message);
-          validationMessages.push(message);
+        const key = selector + '\0' + value;
+        if (seenEditorValues.has(key)) continue;
+        seenEditorValues.add(key);
+
+        const cs = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        const visible = cs.display !== 'none'
+          && cs.visibility !== 'hidden'
+          && Number(cs.opacity || '1') > 0
+          && rect.width > 0
+          && rect.height > 0;
+        editorCandidates.push({ selector, value, visible });
+      }
+    }
+
+    const seenIssues = new Set<string>();
+    const validationMessages: string[] = [];
+    for (const selector of arg.issueSelectors) {
+      for (const el of Array.from(document.querySelectorAll(selector))) {
+        const normalizedMessageLines = String(el.textContent || '').replace(/\r\n/g, '\n').split('\n');
+        const trimmedMessageLines: string[] = [];
+        for (const line of normalizedMessageLines) {
+          trimmedMessageLines.push(line.replace(/[ \t]+$/g, ''));
         }
+        const message = trimmedMessageLines.join('\n').trim();
+        if (!message || seenIssues.has(message)) continue;
+        seenIssues.add(message);
+        validationMessages.push(message);
       }
+    }
 
-      return {
-        currentUrl: window.location.href,
-        title: document.title,
-        expectedSource: normalize(expectedSource),
-        editorCandidates,
-        validationMessages
-      };
-    },
-    { expectedSource: input.expectedSource }
+    const normalizedExpectedLines = String(arg.expectedSource).replace(/\r\n/g, '\n').split('\n');
+    const trimmedExpectedLines: string[] = [];
+    for (const line of normalizedExpectedLines) {
+      trimmedExpectedLines.push(line.replace(/[ \t]+$/g, ''));
+    }
+
+    return {
+      currentUrl: window.location.href,
+      title: document.title,
+      expectedSource: trimmedExpectedLines.join('\n').trim(),
+      editorCandidates,
+      validationMessages,
+      bodyText: document.body ? (document.body.innerText || '') : ''
+    };
+  }, probeArg);
+
+  const bodyReadback = parseFormulaBodyReadback(probeResult.bodyText);
+  const bestCandidate = selectBestEditorCandidate(
+    bodyReadback
+      ? [...probeResult.editorCandidates, { selector: 'body-innerText', value: bodyReadback, visible: true }]
+      : probeResult.editorCandidates,
+    probeResult.expectedSource
   );
-
-  const bestCandidate = selectBestEditorCandidate(snapshot.editorCandidates, snapshot.expectedSource);
   if (!bestCandidate) {
     throw createFormulaReadbackFailedError();
   }
 
-  const reopenedRoute = new URL(snapshot.currentUrl).hash;
+  const reopenedRoute = new URL(probeResult.currentUrl).hash;
   const targetRoute = new URL(input.targetUrl).hash;
   if (reopenedRoute !== targetRoute) {
-    throw createFormulaEditorRouteMismatchError(input.targetUrl, snapshot.currentUrl);
+    throw createFormulaEditorRouteMismatchError(input.targetUrl, probeResult.currentUrl);
   }
 
   return {
-    reopenedUrl: snapshot.currentUrl,
+    reopenedUrl: probeResult.currentUrl,
     readbackText: bestCandidate.value,
     selectorUsed: bestCandidate.selector,
-    validation: createValidationResult(snapshot.validationMessages),
+    validation: createValidationResult(probeResult.validationMessages),
     raw: {
-      title: snapshot.title,
-      editorCandidateCount: snapshot.editorCandidates.length,
-      validationMessageCount: snapshot.validationMessages.length
+      title: probeResult.title,
+      editorCandidateCount: probeResult.editorCandidates.length,
+      validationMessageCount: probeResult.validationMessages.length
     }
   };
 }
@@ -390,8 +519,8 @@ function normalizeObservedRun(input: {
   expectedSource: string;
   probeRun: FormulaProbeRun;
 }): NormalizedReadback {
-  const expectedNormalized = normalizeFormulaSource(input.expectedSource);
-  const observedNormalized = normalizeFormulaSource(input.probeRun.readbackText);
+  const expectedNormalized = normalizeFormulaComparisonSource(input.expectedSource);
+  const observedNormalized = normalizeFormulaComparisonSource(input.probeRun.readbackText);
 
   return {
     mode: 'non-mutating',
@@ -424,59 +553,53 @@ async function observeFormulaRun(input: {
   stepName: string;
   targetUrl: string;
   probe: FormulaBrowserProbe;
-  sessionFactory: (profile: SacCliProfile) => Promise<ManagedBrowserSession>;
+  session: ManagedBrowserSession;
   screenshotPath?: string;
 }): Promise<ObservedRun> {
-  const session = await input.sessionFactory(input.profile);
+  await openSacRoute(input.session.page, input.targetUrl);
 
-  try {
-    await session.page.goto(input.targetUrl, { waitUntil: 'domcontentloaded' });
-
-    let probeRun: FormulaProbeRun | null = null;
-    let lastProbeError: unknown;
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      try {
-        probeRun = await input.probe({
-          page: session.page,
-          inspection: input.inspection,
-          expectedSource: input.expectedSource,
-          targetUrl: input.targetUrl
-        });
-        break;
-      } catch (error) {
-        lastProbeError = error;
-        if (!(error instanceof CliError) || error.code !== 'FORMULA_READBACK_FAILED' || attempt === 3) {
-          throw error;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 250));
+  let probeRun: FormulaProbeRun | null = null;
+  let lastProbeError: unknown;
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    try {
+      probeRun = await input.probe({
+        page: input.session.page,
+        inspection: input.inspection,
+        expectedSource: input.expectedSource,
+        targetUrl: input.targetUrl
+      });
+      break;
+    } catch (error) {
+      lastProbeError = error;
+      if (!(error instanceof CliError) || error.code !== 'FORMULA_READBACK_FAILED' || attempt === 23) {
+        throw error;
       }
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-
-    if (!probeRun) {
-      throw lastProbeError instanceof Error ? lastProbeError : createFormulaReadbackFailedError();
-    }
-
-    if (input.screenshotPath) {
-      await session.takeScreenshot(input.screenshotPath);
-    }
-
-    const normalized = normalizeObservedRun({
-      inspection: input.inspection,
-      stepKey: input.stepKey,
-      stepName: input.stepName,
-      expectedSource: input.expectedSource,
-      probeRun
-    });
-
-    return {
-      reopenedUrl: probeRun.reopenedUrl,
-      normalized,
-      normalizedHash: sha256(stableStringify(normalized)),
-      validation: probeRun.validation
-    };
-  } finally {
-    await session.close();
   }
+
+  if (!probeRun) {
+    throw lastProbeError instanceof Error ? lastProbeError : createFormulaReadbackFailedError();
+  }
+
+  if (input.screenshotPath) {
+    await input.session.takeScreenshot(input.screenshotPath);
+  }
+
+  const normalized = normalizeObservedRun({
+    inspection: input.inspection,
+    stepKey: input.stepKey,
+    stepName: input.stepName,
+    expectedSource: input.expectedSource,
+    probeRun
+  });
+
+  return {
+    reopenedUrl: probeRun.reopenedUrl,
+    normalized,
+    normalizedHash: sha256(stableStringify(normalized)),
+    validation: probeRun.validation
+  };
 }
 
 async function writeStableArtifact(filePath: string, content: string): Promise<string> {
@@ -509,27 +632,38 @@ export async function verifyPilotFormula(
   const targetUrl = buildTargetUrl(profile, inspection.proofInputs.dataAction.route);
   const proofStep = await readProofStepSource(inspection);
 
-  const firstRun = await observeFormulaRun({
-    inspection,
-    profile,
-    expectedSource: proofStep.source,
-    stepKey: proofStep.stepKey,
-    stepName: proofStep.stepName,
-    targetUrl,
-    probe,
-    sessionFactory,
-    screenshotPath
-  });
-  const secondRun = await observeFormulaRun({
-    inspection,
-    profile,
-    expectedSource: proofStep.source,
-    stepKey: proofStep.stepKey,
-    stepName: proofStep.stepName,
-    targetUrl,
-    probe,
-    sessionFactory
-  });
+  const session = await sessionFactory(profile);
+
+  let firstRun: ObservedRun;
+  let secondRun: ObservedRun;
+
+  try {
+    await ensureSacAppShell(session.page, profile.tenantUrl);
+
+    firstRun = await observeFormulaRun({
+      inspection,
+      profile,
+      expectedSource: proofStep.source,
+      stepKey: proofStep.stepKey,
+      stepName: proofStep.stepName,
+      targetUrl,
+      probe,
+      session,
+      screenshotPath
+    });
+    secondRun = await observeFormulaRun({
+      inspection,
+      profile,
+      expectedSource: proofStep.source,
+      stepKey: proofStep.stepKey,
+      stepName: proofStep.stepName,
+      targetUrl,
+      probe,
+      session
+    });
+  } finally {
+    await session.close();
+  }
 
   const hashes = [firstRun.normalizedHash, secondRun.normalizedHash];
   const repeatabilityStable = hashes.every((hash) => hash === firstRun.normalizedHash);

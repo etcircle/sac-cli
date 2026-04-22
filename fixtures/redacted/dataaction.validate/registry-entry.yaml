@@ -1,0 +1,58 @@
+schemaVersion: 1
+capability: dataaction.validate
+title: Validate a data action advanced formula step
+summary: Prefers browser-captured objectmgr validate replay and reports when runtime had to fall back to the narrower single-step validate path.
+status: promoted
+lane: hybrid
+underlyingSeam:
+  method: POST
+  endpoint: /sap/fpa/services/rest/epm/objectmgr?tenant=J
+  action: callFunction:PLANNINGSEQUENCE.validate
+prerequisites:
+  route: '#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863'
+  auth: Browser-backed SAC session with runtime route context and CSRF token.
+  runtime:
+    - tenantId
+    - csrfToken
+    - data action editor route
+artifacts:
+  capture: fixtures/redacted/dataaction.validate/capture.json
+  contractTests:
+    - tests/contract/objectmgr.validate.spec.ts
+  documentation:
+    - docs/capabilities/README.md
+    - docs/capabilities/dataaction.validate.md
+payloadStrategy:
+  baseline: exact-capture-plus-patch
+  patchPaths:
+    - $.request.body.data[2][0].sequenceMetadata.planningSteps[0].scriptContent
+  volatility:
+    volatilePaths:
+      - $.capturedAt
+      - $.runtimeContext.context.tenantDescription
+    stablePaths:
+      - $.request.body.data[0]
+      - $.request.body.data[1]
+      - $.request.body.data[2][0].sequenceMetadata.planningSteps[0].id
+      - $.request.body.data[2][0].sequenceMetadata.parameters[0].displayKey
+    syntheticPayloadReliability: unreliable
+  notes:
+    - Preserve the browser-captured validate request until replay experiments prove more reduction is safe.
+    - Patch only the target step scriptContent; do not strip sibling step metadata or prompt values.
+    - Runtime should report whether validation used captured-request-replay or the narrower single-step-fallback path.
+proof:
+  contract:
+    status: present
+    tests:
+      - tests/contract/objectmgr.validate.spec.ts
+      - tests/formula/validate.spec.ts
+  live:
+    status: verified
+    summary: Verified on 2026-04-16 through the live formula validate flow against a live SAC tenant.
+  notes:
+    - The current product surface is formula validate; this registry entry names the underlying semantic capability.
+knownFailureModes:
+  - Minimal synthetic objectmgr validate payloads can produce garbage validation output or HTTP 500 failures.
+  - Missing route context or CSRF state prevents honest replay.
+  - Patching beyond the target scriptContent risks breaking prompt and sibling-step semantics.
+  - 'single-step-fallback is narrower than captured replay and should not be read as proof that sibling-step/prompt semantics were preserved.'

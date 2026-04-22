@@ -16,10 +16,10 @@ sources:
   dataActionCapture: data-action-edit.json
 story:
   key: forecast-story
-  name: POC - C_REPORTING forecast table
-  resourceId: 6441DE864495C73F5BCA84DEF179F641
-  route: '#/story2&/s2/6441DE864495C73F5BCA84DEF179F641/?type=CANVAS&mode=edit'
-  folderPath: My Files / My Playground
+  name: Hermes CLI table perfection 2026-04-17-08-44
+  resourceId: A721FE8644954AAA8DA56B1D0E35F653
+  route: '#/story2&/s2/A721FE8644954AAA8DA56B1D0E35F653/?type=RESPONSIVE&mode=edit'
+  folderPath: My Files / My Playground / CLI-Testing
 dataAction:
   key: fx-translation
   displayName: C_REP_DA008
@@ -48,8 +48,8 @@ steps:
 `;
 
 const storyYaml = `key: forecast-story
-name: POC - C_REPORTING forecast table
-folderPath: My Files / My Playground
+name: Hermes CLI table perfection 2026-04-17-08-44
+folderPath: My Files / My Playground / CLI-Testing
 pages:
   - key: main
     name: Page_1
@@ -86,7 +86,7 @@ dataAction:
     fx-trans: 39357048-8119-4677-3365-911086985863
 story:
   key: forecast-story
-  resourceId: 6441DE864495C73F5BCA84DEF179F641
+  resourceId: A721FE8644954AAA8DA56B1D0E35F653
 widgets:
   forecast-table:
     story: forecast-story

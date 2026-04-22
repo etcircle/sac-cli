@@ -1,5 +1,7 @@
 # SAC CLI W1.6 — Read-Only `objectmgr` Spine Implementation Plan
 
+> **Status:** Historical/completed. W1.6 landed on `main`. Use `docs/plans/2026-04-16-w1-7-v2-seam-harvest-program.md` for the active next-wave program plan.
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task, but keep the contract-critical command/service spine in the parent session first.
 
 **Goal:** Turn the one-off `formula verify-pilot` proof into an honest, reusable read-only runtime for data-action metadata and Advanced Formula validation without adding apply/save lies.

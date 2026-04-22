@@ -8,7 +8,8 @@ import {
   type ManagedBrowserSession,
   createDefaultBrowserRuntime,
   ensureSacAppUrl,
-  launchPersistentBrowserSession
+  launchPersistentBrowserSession,
+  openSacRoute
 } from '../session/browser-session.js';
 import { readSacRuntimeContext } from '../session/page-fetch.js';
 import {
@@ -79,7 +80,7 @@ async function readLivePlanningSequence(
 
   try {
     const targetUrl = buildTargetUrl(profile, inspection.proofInputs.dataAction.route);
-    await session.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    await openSacRoute(session.page, targetUrl);
     const runtimeContext = await readSacRuntimeContext(session.page, inspection.proofInputs.tenant.tenantId, {
       requireCsrfToken: true,
       timeoutMs: 15000

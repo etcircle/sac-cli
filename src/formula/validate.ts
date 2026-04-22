@@ -11,10 +11,15 @@ import {
   type ManagedBrowserSession,
   createDefaultBrowserRuntime,
   ensureSacAppUrl,
-  launchPersistentBrowserSession
+  openManagedBrowserSession,
+  openSacRoute
 } from '../session/browser-session.js';
 import { readSacRuntimeContext } from '../session/page-fetch.js';
 import { createObjectMgrClient } from '../seams/objectmgr/client.js';
+import {
+  patchDataActionValidateRequest,
+  type CapturedDataActionValidateRequest
+} from '../replay/payload-patchers.js';
 import { type FormulaValidationResult } from './types.js';
 
 export type ValidatePilotFormulaInput = {
@@ -41,7 +46,7 @@ async function createSessionFactory(
   runtime?: BrowserRuntime
 ): Promise<(profile: SacCliProfile) => Promise<ManagedBrowserSession>> {
   const resolvedRuntime = runtime ?? await createDefaultBrowserRuntime();
-  return async (profile: SacCliProfile) => launchPersistentBrowserSession(profile, resolvedRuntime);
+  return async (profile: SacCliProfile) => openManagedBrowserSession(profile, resolvedRuntime);
 }
 
 function createDefaultObjectMgrFactory(): FormulaObjectMgrClientFactory {
@@ -71,11 +76,6 @@ async function readProofStepSource(inspection: PilotBundleInspection): Promise<s
   return readFile(path.join(inspection.bundleRoot, proofStep.file), 'utf8');
 }
 
-type CapturedValidatePlanningSequenceRequest = {
-  action: 'callFunction';
-  data: ['PLANNINGSEQUENCE', 'validate', [Record<string, unknown>, ...unknown[]]];
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -83,7 +83,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseCapturedValidateRequest(
   request: BrowserRequest,
   expectedStepId: string
-): CapturedValidatePlanningSequenceRequest | null {
+): CapturedDataActionValidateRequest | null {
   const rawBody = request.postData();
   if (!rawBody) {
     return null;
@@ -122,14 +122,14 @@ function parseCapturedValidateRequest(
     return null;
   }
 
-  return parsed as CapturedValidatePlanningSequenceRequest;
+  return parsed as CapturedDataActionValidateRequest;
 }
 
 async function waitForCapturedValidateRequest(
   page: BrowserPage,
   expectedStepId: string,
   timeoutMs: number
-): Promise<CapturedValidatePlanningSequenceRequest | null> {
+): Promise<CapturedDataActionValidateRequest | null> {
   if (!page.waitForRequest) {
     return null;
   }
@@ -145,59 +145,14 @@ async function waitForCapturedValidateRequest(
   }
 }
 
-function patchCapturedValidateRequest(
-  request: CapturedValidatePlanningSequenceRequest,
-  input: { stepId: string; scriptContent: string }
-): CapturedValidatePlanningSequenceRequest {
-  const validationInputs = request.data[2];
-  const [firstInput, ...remainingInputs] = validationInputs;
-  const sequenceMetadata = firstInput.sequenceMetadata;
-
-  if (!isRecord(sequenceMetadata) || !Array.isArray(sequenceMetadata.planningSteps)) {
-    throw new Error('Captured SAC validate payload is missing sequenceMetadata.planningSteps.');
-  }
-
-  let replaced = false;
-  const planningSteps = sequenceMetadata.planningSteps.map((step) => {
-    if (!isRecord(step) || step.id !== input.stepId) {
-      return step;
-    }
-
-    replaced = true;
-    return {
-      ...step,
-      scriptContent: input.scriptContent
-    };
-  });
-
-  if (!replaced) {
-    throw new Error(`Captured SAC validate payload is missing the target step "${input.stepId}".`);
-  }
-
-  return {
-    ...request,
-    data: [
-      request.data[0],
-      request.data[1],
-      [
-        {
-          ...firstInput,
-          sequenceMetadata: {
-            ...sequenceMetadata,
-            planningSteps
-          }
-        },
-        ...remainingInputs
-      ]
-    ]
-  };
-}
+export type FormulaValidateRuntimeMode = 'captured-request-replay' | 'single-step-fallback';
 
 export async function validatePilotFormula(
   input: ValidatePilotFormulaInput = {},
   deps: ValidatePilotDependencies = {}
 ): Promise<FormulaValidationResult & {
   validationSource: 'objectmgr';
+  runtimeMode: FormulaValidateRuntimeMode;
   profile: string;
   bundleRoot: string;
   resolvedTenantUrl: string;
@@ -229,7 +184,7 @@ export async function validatePilotFormula(
       15000
     );
 
-    await session.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    await openSacRoute(session.page, targetUrl);
     const runtimeContext = await readSacRuntimeContext(session.page, inspection.proofInputs.tenant.tenantId, {
       requireCsrfToken: true,
       timeoutMs: 15000
@@ -241,10 +196,13 @@ export async function validatePilotFormula(
       tenantUrl: profile.tenantUrl
     });
     const capturedValidateRequest = await capturedValidateRequestPromise;
+    const runtimeMode: FormulaValidateRuntimeMode = capturedValidateRequest
+      ? 'captured-request-replay'
+      : 'single-step-fallback';
     const validation = capturedValidateRequest
       ? await objectMgr.validatePlanningSequenceRequest({
           stepId: inspection.proofInputs.dataAction.stepId,
-          request: patchCapturedValidateRequest(capturedValidateRequest, {
+          request: patchDataActionValidateRequest(capturedValidateRequest, {
             stepId: inspection.proofInputs.dataAction.stepId,
             scriptContent: stepSource
           })
@@ -269,6 +227,7 @@ export async function validatePilotFormula(
     return {
       ...validation,
       validationSource: 'objectmgr',
+      runtimeMode,
       profile: profile.name,
       bundleRoot: inspection.bundleRoot,
       resolvedTenantUrl: ensureSacAppUrl(profile.tenantUrl),

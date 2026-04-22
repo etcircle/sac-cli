@@ -9,7 +9,8 @@ describe('formula command wiring', () => {
       data: {
         status: 'valid',
         issues: [],
-        validationSource: 'objectmgr'
+        validationSource: 'objectmgr',
+        runtimeMode: 'captured-request-replay'
       }
     });
 
@@ -33,7 +34,8 @@ describe('formula command wiring', () => {
       data: {
         status: 'valid',
         issues: [],
-        validationSource: 'objectmgr'
+        validationSource: 'objectmgr',
+        runtimeMode: 'captured-request-replay'
       }
     });
   });

@@ -17,6 +17,11 @@ export type SacRuntimeContext = {
   tenantDescription: string | null;
 };
 
+function isRetryablePageEvaluateError(error: unknown): boolean {
+  return error instanceof Error
+    && /execution context was destroyed/i.test(error.message);
+}
+
 export async function readSacRuntimeContext(
   page: BrowserPage,
   fallbackTenantId?: string,
@@ -35,23 +40,31 @@ export async function readSacRuntimeContext(
   let runtimeContext: { tenantId: string | null; csrfToken: string | null; tenantDescription: string | null } | null = null;
 
   while (Date.now() <= deadline) {
-    runtimeContext = await page.evaluate((input) => {
-      const runtimeGlobal = globalThis as typeof globalThis & {
-        TENANT?: string;
-        TENANT_DESC?: string;
-        FPA_CSRF_TOKEN?: string;
-        FPA_SESSION?: {
-          tenant?: Array<{ id?: string; description?: string }>;
+    try {
+      runtimeContext = await page.evaluate((input) => {
+        const runtimeGlobal = globalThis as typeof globalThis & {
+          TENANT?: string;
+          TENANT_DESC?: string;
+          FPA_CSRF_TOKEN?: string;
+          FPA_SESSION?: {
+            tenant?: Array<{ id?: string; description?: string }>;
+          };
         };
-      };
-      const tenantFromSession = runtimeGlobal.FPA_SESSION?.tenant?.[0]?.id || null;
-      const descriptionFromSession = runtimeGlobal.FPA_SESSION?.tenant?.[0]?.description || null;
-      return {
-        tenantId: runtimeGlobal.TENANT || tenantFromSession || input.fallbackTenantId || null,
-        csrfToken: runtimeGlobal.FPA_CSRF_TOKEN || null,
-        tenantDescription: runtimeGlobal.TENANT_DESC || descriptionFromSession || null
-      };
-    }, { fallbackTenantId: fallbackTenantId ?? null });
+        const tenantFromSession = runtimeGlobal.FPA_SESSION?.tenant?.[0]?.id || null;
+        const descriptionFromSession = runtimeGlobal.FPA_SESSION?.tenant?.[0]?.description || null;
+        return {
+          tenantId: runtimeGlobal.TENANT || tenantFromSession || input.fallbackTenantId || null,
+          csrfToken: runtimeGlobal.FPA_CSRF_TOKEN || null,
+          tenantDescription: runtimeGlobal.TENANT_DESC || descriptionFromSession || null
+        };
+      }, { fallbackTenantId: fallbackTenantId ?? null });
+    } catch (error) {
+      if (!isRetryablePageEvaluateError(error) || Date.now() > deadline) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      continue;
+    }
 
     if (runtimeContext?.tenantId && (!options.requireCsrfToken || runtimeContext.csrfToken)) {
       break;

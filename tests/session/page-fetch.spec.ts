@@ -25,6 +25,28 @@ describe('page fetch helper', () => {
     });
   });
 
+  it('retries runtime-context reads when page.evaluate loses its execution context during navigation', async () => {
+    const page = {
+      goto: vi.fn(),
+      url: () => 'https://tenant.example.invalid/sap/fpa/ui/app.html',
+      screenshot: vi.fn(),
+      evaluate: vi.fn()
+        .mockRejectedValueOnce(new Error('Execution context was destroyed, most likely because of a navigation'))
+        .mockResolvedValueOnce({
+          tenantId: 'J',
+          csrfToken: 'csrf-token',
+          tenantDescription: '9AA1C'
+        })
+    };
+
+    await expect(readSacRuntimeContext(page, 'EXAMPLE')).resolves.toEqual({
+      tenantId: 'J',
+      csrfToken: 'csrf-token',
+      tenantDescription: '9AA1C'
+    });
+    expect(page.evaluate).toHaveBeenCalledTimes(2);
+  });
+
   it('falls back to the provided tenant id when the page globals are missing', async () => {
     const page = {
       goto: vi.fn(),

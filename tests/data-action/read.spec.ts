@@ -104,10 +104,7 @@ describe('data-action read services', () => {
       }
     );
 
-    expect(goto).toHaveBeenCalledWith(
-      `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863`,
-      { waitUntil: 'domcontentloaded' }
-    );
+    expect(goto).not.toHaveBeenCalled();
     expect(objectMgrFactory).toHaveBeenCalledWith({
       tenantId: 'J',
       csrfToken: 'csrf-token',

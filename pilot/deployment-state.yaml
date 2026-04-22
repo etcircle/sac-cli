@@ -10,7 +10,7 @@ dataAction:
 
 story:
   key: forecast-story
-  resourceId: 6441DE864495C73F5BCA84DEF179F641
+  resourceId: A721FE8644954AAA8DA56B1D0E35F653
 
 widgets:
   forecast-table:

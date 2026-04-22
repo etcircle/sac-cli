@@ -2,6 +2,7 @@ import { Command, CommanderError } from 'commander';
 import { registerAuthCommands, type AuthServices } from './auth.js';
 import { registerDataActionCommands, type DataActionServices } from './data-action.js';
 import { registerFormulaCommands, type FormulaServices } from './formula.js';
+import { registerStoryCommands, type StoryServices } from './story.js';
 import { assertCommandEnabled, CliError } from '../app/command-guard.js';
 import { ExitCode } from '../app/exit-codes.js';
 import { CommandEnvelope, formatJsonEnvelope, formatPlainText } from '../app/output.js';
@@ -34,6 +35,7 @@ export type RunCliDependencies = {
   authServices?: AuthServices;
   dataActionServices?: DataActionServices;
   formulaServices?: FormulaServices;
+  storyServices?: Partial<StoryServices>;
 };
 
 function parseEnabledCommands(value: string): string[] {
@@ -103,6 +105,15 @@ function createProgram(
       envelope = nextEnvelope;
     },
     formulaServices: dependencies.formulaServices
+  });
+
+  const story = program.command('story').description('Browser-backed story authoring workflows');
+  registerStoryCommands(story, {
+    getOptions,
+    setEnvelope: (nextEnvelope) => {
+      envelope = nextEnvelope;
+    },
+    storyServices: dependencies.storyServices
   });
 
   const doctor = program.command('doctor').description('Run minimal diagnostics');

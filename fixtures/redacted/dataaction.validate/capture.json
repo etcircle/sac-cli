@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "capability": "dataaction.validate",
+  "capturedAt": "2026-04-16T22:11:09.000Z",
+  "workflow": {
+    "actor": "browser",
+    "label": "browser validate advanced formula step from the SAC data action designer",
+    "intent": "Reuse the browser-captured validate request and patch only the target step scriptContent"
+  },
+  "route": {
+    "before": "#/dataaction&/edit/FA9020524E79E7C812C4D1E8D41355B",
+    "after": "#/dataaction&/edit/FA9020524E79E7C812C4D1E8D41355B"
+  },
+  "runtimeContext": {
+    "tenantUrl": "https://tenant.example.invalid/sap/fpa/ui/app.html",
+    "tenantId": "J",
+    "route": "#/dataaction&/edit/FA9020524E79E7C812C4D1E8D41355B",
+    "csrfTokenPresent": true,
+    "context": {
+      "tenantDescription": "REDACTED_TENANT_DESCRIPTION",
+      "objectType": "PLANNINGSEQUENCE",
+      "package": "t.J",
+      "objectName": "FA9020524E79E7C812C4D1E8D41355B",
+      "stepId": "39357048-8119-4677-3365-911086985863"
+    }
+  },
+  "request": {
+    "method": "POST",
+    "url": "/sap/fpa/services/rest/epm/objectmgr?tenant=J",
+    "headers": {
+      "accept": "application/json, text/javascript, */*; q=0.01",
+      "content-type": "application/json;charset=UTF-8",
+      "x-requested-with": "XMLHttpRequest"
+    },
+    "body": {
+      "action": "callFunction",
+      "data": [
+        "PLANNINGSEQUENCE",
+        "validate",
+        [
+          {
+            "scope": "DESIGNER",
+            "sequenceMetadata": {
+              "version": "2025.19",
+              "defaultCubeId": "C9dksk0o57hlt1jra87he2vh67",
+              "encounteredVersionLimit": false,
+              "planningSteps": [
+                {
+                  "id": "39357048-8119-4677-3365-911086985863",
+                  "name": "FX_TRANS",
+                  "description": "FX Trans Logic",
+                  "stepType": "SCRIPT",
+                  "panelType": "TEXTUAL",
+                  "scriptContent": "REMOTE SOURCE",
+                  "visualContent": {
+                    "source": "captured-target-step"
+                  }
+                },
+                {
+                  "id": "23264722-7626-4070-3296-525437926682",
+                  "name": "F_CLO",
+                  "description": "CLOSING Balances",
+                  "stepType": "SCRIPT",
+                  "panelType": "TEXTUAL",
+                  "scriptContent": "UNCHANGED SECOND STEP"
+                }
+              ],
+              "parameters": [
+                {
+                  "displayKey": "TargetCurrency",
+                  "inputType": "PROMPT",
+                  "type": "MEMBER",
+                  "cardinality": "SINGLE",
+                  "dimensionId": "C_CURRENCY",
+                  "value": {
+                    "memberId": "USD",
+                    "hierarchyName": null
+                  }
+                }
+              ]
+            },
+            "sequenceId": "PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B",
+            "loadScriptContents": false,
+            "bDefaultCubeChanged": false
+          }
+        ]
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "sequenceMessages": {},
+      "stepMessagesByStepId": {
+        "39357048-8119-4677-3365-911086985863": {
+          "E0200000": [
+            {
+              "line": 0,
+              "severity": "E",
+              "start": 0,
+              "stop": 0,
+              "message": {
+                "code": "UPDATED_OTHER_MODEL",
+                "args": [
+                  "C_RATES"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "parameterMessagesByScope": {},
+      "executionConfigurationMessages": {}
+    }
+  },
+  "volatility": {
+    "baseline": "exact-capture-plus-patch",
+    "patchStrategy": "Patch only $.request.body.data[2][0].sequenceMetadata.planningSteps[0].scriptContent and preserve the rest of the captured payload.",
+    "patchPaths": [
+      "$.request.body.data[2][0].sequenceMetadata.planningSteps[0].scriptContent"
+    ],
+    "volatilePaths": [
+      "$.capturedAt",
+      "$.runtimeContext.context.tenantDescription"
+    ],
+    "stablePaths": [
+      "$.request.body.data[0]",
+      "$.request.body.data[1]",
+      "$.request.body.data[2][0].sequenceMetadata.planningSteps[0].id",
+      "$.request.body.data[2][0].sequenceMetadata.parameters[0].displayKey"
+    ],
+    "notes": [
+      "Minimal synthetic payloads were unreliable during live validation experiments.",
+      "Sibling planning step metadata and prompt parameter values must survive replay."
+    ]
+  },
+  "evidence": {
+    "source": "browser-capture",
+    "redactions": [
+      "tenantDescription",
+      "owner-identifying values"
+    ],
+    "notes": [
+      "This redacted artifact preserves the browser winning shape rather than a hand-minimized request."
+    ]
+  }
+}

@@ -198,6 +198,7 @@ describe('formula validate service', () => {
       }
     });
     expect(result.status).toBe('invalid');
+    expect(result.runtimeMode).toBe('captured-request-replay');
     expect(result.issues).toEqual([
       {
         code: 'UPDATED_OTHER_MODEL',
@@ -288,10 +289,7 @@ describe('formula validate service', () => {
       }
     );
 
-    expect(goto).toHaveBeenCalledWith(
-      `${PILOT_RUNTIME_TENANT_URL}#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863`,
-      { waitUntil: 'domcontentloaded' }
-    );
+    expect(goto).not.toHaveBeenCalled();
     expect(objectMgrFactory).toHaveBeenCalledWith({
       tenantId: 'J',
       csrfToken: 'csrf-token',
@@ -324,6 +322,7 @@ describe('formula validate service', () => {
         }
       ],
       validationSource: 'objectmgr',
+      runtimeMode: 'single-step-fallback',
       profile: PILOT_PROFILE_NAME,
       bundleRoot,
       resolvedTenantUrl: PILOT_RUNTIME_TENANT_URL,

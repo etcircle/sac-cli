@@ -23,7 +23,7 @@ describe('pilot bundle inspection', () => {
     const inspection = await inspectPilotBundle(root);
 
     expect(inspection.bundleRoot).toBe(bundleRoot);
-    expect(inspection.proofInputs.story.resourceId).toBe('6441DE864495C73F5BCA84DEF179F641');
+    expect(inspection.proofInputs.story.resourceId).toBe('A721FE8644954AAA8DA56B1D0E35F653');
     expect(inspection.dataAction.steps).toHaveLength(1);
     expect(inspection.widgets.map((widget) => widget.key)).toEqual(['forecast-table']);
     expect(inspection.acceptanceChecks).toEqual([
@@ -51,7 +51,7 @@ describe('pilot bundle inspection', () => {
     const bundleRoot = await writePilotBundle(root);
     await writeFile(
       path.join(bundleRoot, 'proof-inputs.yaml'),
-      `tenant:\n  baseUrl: ${PILOT_BASE_URL}\n  tenantId: EXAMPLE\n  profile: pilot-sandbox\nsources:\n  handoff: sac-agent-handover-2026-04-15\n  reconFolder: sac-api-recon-2026-04-15_143009\n  storyCapture: story-edit.json\n  dataActionCapture: data-action-edit.json\nstory:\n  key: forecast-story\n  name: POC - C_REPORTING forecast table\n  resourceId: 6441DE864495C73F5BCA84DEF179F641\n  route: '#/story2&/s2/6441DE864495C73F5BCA84DEF179F641/?type=CANVAS&mode=edit'\n  folderPath: My Files / My Playground\ndataAction:\n  key: fx-translation\n  displayName: C_REP_DA008\n  objectType: PLANNINGSEQUENCE\n  package: t.J\n  objectName: FA9020524E79E7C812C4D1E8D41355B\n  route: '#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863'\n  stepId: 39357048-8119-4677-3365-911086985863\n  stepName: NOT_A_REAL_STEP\n  defaultModelId: C9dksk0o57hlt1jra87he2vh67\n`,
+      `tenant:\n  baseUrl: ${PILOT_BASE_URL}\n  tenantId: EXAMPLE\n  profile: pilot-sandbox\nsources:\n  handoff: sac-agent-handover-2026-04-15\n  reconFolder: sac-api-recon-2026-04-15_143009\n  storyCapture: story-edit.json\n  dataActionCapture: data-action-edit.json\nstory:\n  key: forecast-story\n  name: Hermes CLI table perfection 2026-04-17-08-44\n  resourceId: A721FE8644954AAA8DA56B1D0E35F653\n  route: '#/story2&/s2/A721FE8644954AAA8DA56B1D0E35F653/?type=RESPONSIVE&mode=edit'\n  folderPath: My Files / My Playground / CLI-Testing\ndataAction:\n  key: fx-translation\n  displayName: C_REP_DA008\n  objectType: PLANNINGSEQUENCE\n  package: t.J\n  objectName: FA9020524E79E7C812C4D1E8D41355B\n  route: '#/dataaction&/da/PLANNINGSEQUENCE:t.J:FA9020524E79E7C812C4D1E8D41355B/?step=39357048-8119-4677-3365-911086985863'\n  stepId: 39357048-8119-4677-3365-911086985863\n  stepName: NOT_A_REAL_STEP\n  defaultModelId: C9dksk0o57hlt1jra87he2vh67\n`,
       'utf8'
     );
 

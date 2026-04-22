@@ -11,10 +11,10 @@ sources:
 
 story:
   key: forecast-story
-  name: POC - C_REPORTING forecast table
-  resourceId: 6441DE864495C73F5BCA84DEF179F641
-  route: '#/story2&/s2/6441DE864495C73F5BCA84DEF179F641/?type=CANVAS&mode=edit'
-  folderPath: My Files / My Playground
+  name: Hermes CLI table perfection 2026-04-17-08-44
+  resourceId: A721FE8644954AAA8DA56B1D0E35F653
+  route: '#/story2&/s2/A721FE8644954AAA8DA56B1D0E35F653/?type=RESPONSIVE&mode=edit'
+  folderPath: My Files / My Playground / CLI-Testing
 
 dataAction:
   key: fx-translation
